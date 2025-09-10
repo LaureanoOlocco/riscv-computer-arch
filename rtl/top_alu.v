@@ -9,7 +9,6 @@ module top_alu
     output  wire [NB_DATA_OUT         - 1 : 0] o_led                        ,  
     input   wire [NB_INPUT_SELECT     - 1 : 0] i_btn                        ,
     input   wire [NB_DATA_IN          - 1 : 0] i_sw_data                    ,
-    input   wire                               i_valid                      ,
     input   wire                               i_rst                        ,
     input   wire                               clock                          
 );
@@ -27,7 +26,7 @@ module top_alu
    
     ALU #(
         .NB_DATA    (NB_DATA_IN                                            ),
-        .NB_OP      (NB_OP_CODE_IN                                         )
+        .NB_OP_CODE (NB_OP_CODE_IN                                         )
     ) 
     u_alu 
     (
@@ -36,10 +35,10 @@ module top_alu
         .o_result   (result_out                                            ),
         .i_data_a   (data_a_in                                             ),
         .i_data_b   (data_b_in                                             ),
-        .i_op       (op_in                                                 ),
+        .i_op_code  (op_code_in)
     )                                                                       ;
 
-    always@(posedge clk or posedge i_rst) 
+    always@(posedge clock or posedge i_rst) 
     begin
         if (i_rst) 
         begin
@@ -47,40 +46,31 @@ module top_alu
             data_b_in       <= 0                                            ;
             op_code_in      <= 0                                            ;
         end
-        else if(i_valid)
+        else if(i_btn[DATA_A])
         begin
-            if(i_btn[DATA_A])
-            begin
-                data_a_in   <= i_sw_data                                    ;
-                data_b_in   <= data_b_in                                    ;
-                op_code_in  <= op_code_in                                   ;
-            end
-            else if (i_btn[DATA_B]) 
-            begin
-                data_a_in   <= data_a_in                                    ;
-                data_b_in   <= i_sw_data                                    ;
-                op_code_in  <= op_code_in                                   ;
-            end
-            else if(i_btn[OP_CODE])
-            begin
-                data_a_in   <= data_a_in                                    ;
-                data_b_in   <= data_b_in                                    ;
-                op_code_in  <= i_sw_data[NB_OP_CODE_IN  - 1 : 0]            ;
-            end
-            else
-            begin
-                data_a_in   <= data_a_in                                    ;
-                data_b_in   <= data_b_in                                    ;
-                op_code_in  <= op_code_in                                   ;
-            end
-        end    
+            data_a_in       <= i_sw_data                                    ;
+            data_b_in       <= data_b_in                                    ;
+            op_code_in      <= op_code_in                                   ;
+        end
+        else if (i_btn[DATA_B]) 
+        begin
+            data_a_in       <= data_a_in                                    ;
+            data_b_in       <= i_sw_data                                    ;
+            op_code_in      <= op_code_in                                   ;
+        end
+        else if(i_btn[OP_CODE])
+        begin
+            data_a_in       <= data_a_in                                    ;
+            data_b_in       <= data_b_in                                    ;
+            op_code_in      <= i_sw_data[NB_OP_CODE_IN  - 1 : 0]            ;
+        end
         else
         begin
             data_a_in       <= data_a_in                                    ;
             data_b_in       <= data_b_in                                    ;
             op_code_in      <= op_code_in                                   ;
         end
-    end    
+        end    
 
     assign o_led = {zero_out, carry_out, result_out}                        ;
 

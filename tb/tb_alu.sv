@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module tb_ALU()                                                             ;
+ module tb_ALU()                                                             ;
 
     localparam                                 NB_DATA      = 8             ;   // Tamaño del bus de datos
     localparam                                 NB_OP_CODE   = 6             ;   // Número de bits del código de operación  
@@ -53,10 +53,10 @@ module tb_ALU()                                                             ;
             AND_OP : apply_op_code = {1'b0, (i_data_a & i_data_b)}          ;
             OR_OP  : apply_op_code = {1'b0, (i_data_a | i_data_b)}          ;
             XOR_OP : apply_op_code = {1'b0, (i_data_a ^ i_data_b)}          ;
-            SRA_OP : apply_op_code = {1'b0, (i_data_a >>> i_data_b)}        ; 
-            SRL_OP : apply_op_code = {1'b0, (i_data_a >>  i_data_b)}        ;
+            SRA_OP : apply_op_code = {1'b0, ($signed(i_data_a) >>> i_data_b[$clog2(NB_DATA)-1:0])};
+            SRL_OP : apply_op_code = {1'b0, (i_data_a >>  i_data_b[$clog2(NB_DATA)-1:0])};
             NOR_OP : apply_op_code = {1'b0, ~(i_data_a | i_data_b)}         ;
-            default: apply_op_code = {NB_DATA + 1 {1'b0}}                   ;
+            default: apply_op_code = {(NB_DATA + 1){1'b0}}                  ;
         endcase
     end
     endfunction
@@ -64,11 +64,10 @@ module tb_ALU()                                                             ;
 
     task automatic check_op(input logic [NB_OP_CODE - 1 : 0] op_code_in)    ;
     begin
-        @(posedge clock)                                                    ;
         logic [NB_DATA:0] exp = apply_op_code(op_code_in)                   ;
         logic             cz  = ~(|exp)                                     ;
-        logic             cc  = ((op_code_in == ADD_OP) &&  exp[NB_DATA]) ||
-                                 ((op_code_in == SUB_OP) && ~exp[NB_DATA])  ;
+        logic             cc  = ((op_code_in == ADD_OP) &&  exp[NB_DATA])  ||
+                                ((op_code_in == SUB_OP) && ~exp[NB_DATA])   ;
 
         if (o_result !== exp[NB_DATA-1:0]) 
         begin
@@ -106,44 +105,52 @@ module tb_ALU()                                                             ;
 
         repeat(N_ITERATIONS)
         begin
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op_code= ADD_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= ADD_OP                                               ;
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ;              
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = SUB_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= SUB_OP                                               ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = AND_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code     = AND_OP                                               ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = OR_OP                                                ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= OR_OP                                                ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = XOR_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= XOR_OP                                               ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = SRA_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= SRA_OP                                               ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = SRL_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= SRL_OP                                               ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
 
-            i_data_a = $urandom($time % 35) % MAX_NUMBER                    ;   
-            i_data_b = $urandom($time % 10) % MAX_NUMBER                    ;  
-            i_op     = NOR_OP                                               ;        
+            i_data_a = $urandom_range(0, MAX_NUMBER)                        ;   
+            i_data_b = $urandom_range(0, MAX_NUMBER)                        ;  
+            i_op_code= NOR_OP                                               ;        
+            @(posedge clock)                                                ;        
             check_op(i_op_code)                                             ; 
         end
         $display("TEST PASSED");

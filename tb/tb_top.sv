@@ -24,7 +24,7 @@ module tb_top_alu()                                                             
     localparam                               OP_CODE        = 2'b10                     ; // i_btn[2]
 
     localparam                               N_ITERATIONS = 300;
-    localparam                               MAX_NUMBER   = 2  ^NB_DATA_IN - 1          ;
+    localparam                               MAX_NUMBER   = (1<<NB_DATA_IN)-1           ;
 
     // -------- I/O del DUT --------
     logic       [NB_DATA_OUT        - 1 : 0] o_led                                      ;
@@ -38,7 +38,7 @@ module tb_top_alu()                                                             
         .NB_DATA_OUT     (NB_DATA_OUT                                                   ),
         .NB_DATA_IN      (NB_DATA_IN                                                    ),
         .NB_OP_CODE_IN   (NB_OP_CODE_IN                                                 ),
-        .NB_INPUT_SELECT (NB_INPUT_SELEC                                                )
+        .NB_INPUT_SELECT (NB_INPUT_SELECT                                               )
     ) u_top (
         .o_led           (o_led                                                         ),
         .i_btn           (i_btn                                                         ),
@@ -64,11 +64,11 @@ module tb_top_alu()                                                             
             AND_OP : apply_op_code = {1'b0, (data_a_in & data_b_in)}                    ;
             OR_OP  : apply_op_code = {1'b0, (data_a_in | data_b_in)}                    ;
             XOR_OP : apply_op_code = {1'b0, (data_a_in ^ data_b_in)}                    ;
-            SRA_OP : apply_op_code = {1'b0, (data_a_in >>> data_b_in)}                  ;
-            SRL_OP : apply_op_code = {1'b0, (data_a_in >>  data_b_in)}                  ;
+            SRA_OP : apply_op_code = {1'b0, ($signed(data_a_in) >>> data_b_in[$clog2(NB_DATA_IN)-1:0])};
+            SRL_OP : apply_op_code = {1'b0, (data_a_in >>  data_b_in[$clog2(NB_DATA_IN)-1:0])};
             NOR_OP : apply_op_code = {1'b0, ~(data_a_in | data_b_in)}                   ;
-            default: apply_op_code = {NB_DATA_IN + 1{1'b0}};
-        endcase
+            default: apply_op_code = {(NB_DATA_IN + 1){1'b0}}                           ;
+        endcase 
     endfunction
 
     // -------- Apretar botones y cargar data_a_in, data_b_in y op_code --------
@@ -149,50 +149,50 @@ module tb_top_alu()                                                             
         repeat(N_ITERATIONS) 
         begin
             // ADD
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, ADD_OP)                                ;
             check_expected("ADD", data_a_in, data_b_in, ADD_OP)                             ;
 
             // SUB
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, SUB_OP)                                ;
             check_expected("SUB", data_a_in, data_b_in, SUB_OP)                             ;
 
             // AND
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, AND_OP)                                ;
             check_expected("AND", data_a_in, data_b_in, AND_OP)                             ;
 
             // OR
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, OR_OP)                                 ;
             check_expected("OR", data_a_in, data_b_in, OR_OP)                               ;
 
             // XOR
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, XOR_OP)                                ;
             check_expected("XOR", data_a_in, data_b_in, XOR_OP)                             ;
 
             // SRA 
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, SRA_OP)                                ;
             check_expected("SRA", data_a_in, data_b_in, SRA_OP)                             ;
 
             // SRL 
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, SRL_OP)                                ;
             check_expected("SRL", data_a_in, data_b_in, SRL_OP)                             ;
 
             // NOR
-            data_a_in = $urandom($time % 35) % MAX_NUMBER                                   ;               
-            data_b_in = $urandom($time % 50) % MAX_NUMBER                                   ;
+            data_a_in = $urandom_range(0, MAX_NUMBER)                                       ;               
+            data_b_in = $urandom_range(0, MAX_NUMBER)                                       ;
             press_btn_and_load(data_a_in, data_b_in, NOR_OP)                                ;
             check_expected("NOR", data_a_in, data_b_in, NOR_OP)                             ;
         end

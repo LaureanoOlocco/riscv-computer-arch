@@ -27,20 +27,20 @@ module ALU
     localparam                                 SRL_OP = 6'b000010       ;
     localparam                                 NOR_OP = 6'b100111       ;
 
-    wire signed          [NB_DATA        : 0]  result                   ;
+    reg                  [NB_DATA        : 0]  result                   ;
 
     always @(*) 
     begin        
         case (i_op_code)
-            ADD_OP  : result = i_data_a +   i_data_b                    ; 
-            SUB_OP  : result = i_data_a -   i_data_b                    ; 
-            AND_OP  : result = i_data_a &   i_data_b                    ; 
-            OR_OP   : result = i_data_a |   i_data_b                    ; 
-            XOR_OP  : result = i_data_a ^   i_data_b                    ; 
-            SRA_OP  : result = i_data_a >>> i_data_b                    ; 
-            SRL_OP  : result = i_data_a >>  i_data_b                    ; 
-            NOR_OP  : result = ~(i_data_a | i_data_b)                   ; 
-            default : result = {NB_DATA{1'b0}}                          ; 
+            ADD_OP  : result = {1'b0, i_data_a} + {1'b0, i_data_b}      ; 
+            SUB_OP  : result = {1'b0, i_data_a} - {1'b0, i_data_b}      ; 
+            AND_OP  : result = {1'b0, (i_data_a & i_data_b)}            ; 
+            OR_OP   : result = {1'b0, (i_data_a | i_data_b)}            ; 
+            XOR_OP  : result = {1'b0, (i_data_a ^ i_data_b)}            ; 
+            SRA_OP  : result = {1'b0, ($signed(i_data_a) >>> i_data_b[$clog2(NB_DATA)-1:0])}; 
+            SRL_OP  : result = {1'b0, (i_data_a >>  i_data_b[$clog2(NB_DATA)-1:0])}; 
+            NOR_OP  : result = {1'b0, ~(i_data_a | i_data_b)}           ; 
+            default : result = {(NB_DATA+1){1'b0}}                      ; 
         endcase   
     end
 

@@ -23,7 +23,7 @@ module top_alu
     wire         [NB_DAT_IN           - 1 : 0] result_out                   ;
     reg          [NB_DAT_IN           - 1 : 0] data_a_in                    ; 
     reg          [NB_DAT_IN           - 1 : 0] data_b_in                    ;
-    reg          [NB_OP               - 1 : 0] op_code_in                   ;
+    reg          [NB_OP_CODE_IN       - 1 : 0] op_code_in                   ;
    
     ALU #(
         .NB_DATA    (NB_DATA_IN                                            ),

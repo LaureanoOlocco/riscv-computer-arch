@@ -6,9 +6,9 @@ module top_alu
     parameter                                  NB_INPUT_SELECT = 3
 )
 (
-    output  wire [NB_DATA             - 1 : 0] o_led                        ,  
+    output  wire [NB_DATA_OUT         - 1 : 0] o_led                        ,  
     input   wire [NB_INPUT_SELECT     - 1 : 0] i_btn                        ,
-    input   wire [NB_DATA             - 1 : 0] i_sw_data                    ,
+    input   wire [NB_DATA_IN          - 1 : 0] i_sw_data                    ,
     input   wire                               i_valid                      ,
     input   wire                               i_rst                        ,
     input   wire                               clock                          
@@ -20,9 +20,9 @@ module top_alu
 
     wire                                       zero_out                     ;
     wire                                       carry_out                    ;
-    wire         [NB_DATA             - 1 : 0] result_out                   ;
-    reg          [NB_DATA             - 1 : 0] data_a_in                    ; 
-    reg          [NB_DATA             - 1 : 0] data_b_in                    ;
+    wire         [NB_DAT_IN           - 1 : 0] result_out                   ;
+    reg          [NB_DAT_IN           - 1 : 0] data_a_in                    ; 
+    reg          [NB_DAT_IN           - 1 : 0] data_b_in                    ;
     reg          [NB_OP               - 1 : 0] op_code_in                   ;
    
     ALU #(
@@ -83,5 +83,5 @@ module top_alu
     end    
 
     assign o_led = {zero_out, carry_out, result_out}                        ;
-    
+
 endmodule

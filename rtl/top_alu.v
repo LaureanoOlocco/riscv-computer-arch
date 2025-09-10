@@ -64,9 +64,9 @@ module top_alu
     begin
         if (i_rst) 
         begin
-            data_a_in       <= 0                                                                    ;
-            data_b_in       <= 0                                                                    ;
-            op_code_in      <= 0                                                                    ;
+            data_a_in       <= {NB_DATA_IN   {1'b0}}                                                ;
+            data_b_in       <= {NB_DATA_IN   {1'b0}}                                                ;
+            op_code_in      <= {NB_OP_CODE_IN{1'b0}}                                                ;
         end                     
         else if(i_btn[DATA_A])                      
         begin                       

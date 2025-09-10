@@ -36,10 +36,10 @@ module top_alu
         .o_result   (result_out                                            ),
         .i_data_a   (data_a_in                                             ),
         .i_data_b   (data_b_in                                             ),
-        .i_op       (op_in                                                 ),
+        .i_op       (op_in                                                 )
     )                                                                       ;
 
-    always@(posedge clk or posedge i_rst) 
+    always@(posedge clock or posedge i_rst) 
     begin
         if (i_rst) 
         begin

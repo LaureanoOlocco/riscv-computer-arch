@@ -4,51 +4,49 @@
 //  - Debe incluir generacion de entradas aleatorias y codigo de chequeo
 //  - Simular el diseno usando vivado con analisis de tiempo
 
-//  ADD     100000
-//  SUB     100010
-//  AND     100100
-//  OR      100101
-//  XOR     100110
-//  SRA     000011
-//  SRL     000010
-//  NOR     100111  
-
 module ALU 
 #(
-    parameter NB_DATA = 8,        // Cantidad de bits de data
-    parameter NB_OP   = 6         // Cantidad de bits para la operación
-)
-(
-    input  wire                           i_valid,    // valid para cambiar la salida
-    input  wire signed  [NB_DATA - 1 : 0] i_data_a,   // 8 bits para a
-    input  wire signed  [NB_DATA - 1 : 0] i_data_b,   // 8 bits para b
-    input  wire         [NB_OP   - 1 : 0] i_op    ,   // 8 bits para operador
-    output wire  signed [NB_DATA - 1 : 0] o_result    // Salida de la alu
-);
- 
-    reg signed [NB_DATA-1:0] result                    ;
-    reg signed [NB_DATA-1:0] feedback = {NB_DATA{1'b0}};
+    parameter                                  NB_DATA    = 8           ,   // Tamaño del bus de datos
+    parameter                                  NB_OP_CODE = 6               // Número de bits del código de operación
+)           
+(           
+    output  wire                               o_zero                   ,
+    output  wire                               o_carry                  ,
+    output  wire         [NB_DATA    - 1 : 0]  o_result                 ,  // Salida de la alu
+    input   wire         [NB_DATA    - 1 : 0]  i_data_a                 ,  // 8 bits para a
+    input   wire         [NB_DATA    - 1 : 0]  i_data_b                 ,  // 8 bits para b
+    input   wire         [NB_OP_CODE - 1 : 0]  i_op_code                   // 8 bits para operador
+)                                                                       ;
 
-always @(*) 
-begin
-            
-    case (i_op)
-        6'b100000: result = i_data_a +   i_data_b ; // Operación ADD
-        6'b100010: result = i_data_a -   i_data_b ; // Operación SUB
-        6'b100100: result = i_data_a &   i_data_b ; // Operación AND
-        6'b100101: result = i_data_a |   i_data_b ; // Operación OR
-        6'b100110: result = i_data_a ^   i_data_b ; // Operación XORi_op
-        6'b000011: result = i_data_a >>> i_data_b ; // Operación SRA
-        6'b000010: result = i_data_a >>  i_data_b ; // Operación SRL
-        6'b100111: result = ~(i_data_a | i_data_b); // Operación NOR
-        default:   result = {NB_DATA{1'b0}}       ; // Sino, todo 0
-            
-    endcase
+    localparam                                 ADD_OP = 6'b100000       ;   
+    localparam                                 SUB_OP = 6'b100010       ;
+    localparam                                 AND_OP = 6'b100100       ;
+    localparam                                 OR_OP  = 6'b100101       ;
+    localparam                                 XOR_OP = 6'b100110       ;
+    localparam                                 SRA_OP = 6'b000011       ;
+    localparam                                 SRL_OP = 6'b000010       ;
+    localparam                                 NOR_OP = 6'b100111       ;
 
-    feedback <= i_valid ? result : feedback;
-   
-end
+    wire signed          [NB_DATA        : 0]  result                   ;
 
-    assign o_result = i_valid ? result : feedback;
-    
+    always @(*) 
+    begin        
+        case (i_op_code)
+            ADD_OP  : result = i_data_a +   i_data_b                    ; 
+            SUB_OP  : result = i_data_a -   i_data_b                    ; 
+            AND_OP  : result = i_data_a &   i_data_b                    ; 
+            OR_OP   : result = i_data_a |   i_data_b                    ; 
+            XOR_OP  : result = i_data_a ^   i_data_b                    ; 
+            SRA_OP  : result = i_data_a >>> i_data_b                    ; 
+            SRL_OP  : result = i_data_a >>  i_data_b                    ; 
+            NOR_OP  : result = ~(i_data_a | i_data_b)                   ; 
+            default : result = {NB_DATA{1'b0}}                          ; 
+        endcase   
+    end
+
+    assign o_zero   = ~(|result)                                        ;
+    assign o_carry  = ((i_op_code == ADD_OP && result[NB_DATA])        || 
+                       (i_op_code == SUB_OP && ~result[NB_DATA]))       ; 
+    assign o_result = result[NB_DATA - 1 : 0]                           ; 
+
 endmodule

@@ -12,10 +12,10 @@ module ALU
 (           
     output  wire                               o_zero                   ,
     output  wire                               o_carry                  ,
-    output  wire         [NB_DATA    - 1 : 0]  o_result                 ,  // Salida de la alu
-    input   wire         [NB_DATA    - 1 : 0]  i_data_a                 ,  // 8 bits para a
-    input   wire         [NB_DATA    - 1 : 0]  i_data_b                 ,  // 8 bits para b
-    input   wire         [NB_OP_CODE - 1 : 0]  i_op_code                   // 8 bits para operador
+    output  wire [NB_DATA            - 1 : 0]  o_result                 ,  // Salida de la alu
+    input   wire [NB_DATA            - 1 : 0]  i_data_a                 ,  // 8 bits para a
+    input   wire [NB_DATA            - 1 : 0]  i_data_b                 ,  // 8 bits para b
+    input   wire [NB_OP_CODE         - 1 : 0]  i_op_code                   // 8 bits para operador
 )                                                                       ;
 
     localparam                                 ADD_OP = 6'b100000       ;   

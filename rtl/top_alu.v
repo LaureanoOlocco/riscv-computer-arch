@@ -1,54 +1,87 @@
 module top_alu
 #(
-    parameter NB_DATA = 8,      // Cantidad de bits de data
-    parameter NB_OP   = 6       // Cantidad de bits para la operación
+    parameter                                  NB_DATA_OUT     = 10         ,
+    parameter                                  NB_DATA_IN      = 8          ,   // Tamaño del bus de datos
+    parameter                                  NB_OP_CODE_IN   = 6              // Número de bits del código de operación
+    parameter                                  NB_INPUT_SELECT = 3
 )
-(   
-    input  wire                          clk      ,
-    input  wire                          i_valid  ,
-    input  wire        [2           : 0] i_btn    ,
-    input  wire signed [NB_DATA - 1 : 0] i_sw_data,
-    input  wire                          i_rst    ,
-    output wire signed [NB_DATA - 1 : 0] o_led      // Resultado
+(
+    output  wire [NB_DATA             - 1 : 0] o_led                        ,  
+    input   wire [NB_INPUT_SELECT     - 1 : 0] i_btn                        ,
+    input   wire [NB_DATA             - 1 : 0] i_sw_data                    ,
+    input   wire                               i_valid                      ,
+    input   wire                               i_rst                        ,
+    input   wire                               clock                          
 );
 
-    reg signed [NB_DATA - 1 : 0] data_a; 
-    reg signed [NB_DATA - 1 : 0] data_b;
-    reg        [NB_OP   - 1 : 0] op    ;
+    localparam                                 DATA_A          = 2'b00      ;
+    localparam                                 DATA_B          = 2'b01      ;
+    localparam                                 OP_CODE         = 2'b10      ;
 
-    // Instanciación de la ALU
+    wire                                       zero_out                     ;
+    wire                                       carry_out                    ;
+    wire         [NB_DATA             - 1 : 0] result_out                   ;
+    reg          [NB_DATA             - 1 : 0] data_a_in                    ; 
+    reg          [NB_DATA             - 1 : 0] data_b_in                    ;
+    reg          [NB_OP               - 1 : 0] op_code_in                   ;
+   
     ALU #(
-        .NB_DATA(NB_DATA ),
-        .NB_OP  (NB_OP   )
-    ) alu_instance (
-        .i_data_a(data_a ),
-        .i_data_b(data_b ),
-        .i_op    (op     ),
-        .i_valid (i_valid),
-        .o_result(o_led  )
-    );
+        .NB_DATA    (NB_DATA_IN                                            ),
+        .NB_OP      (NB_OP_CODE_IN                                         )
+    ) 
+    u_alu 
+    (
+        .o_zero     (zero_out                                              ),
+        .o_carry    (carry_out                                             ),
+        .o_result   (result_out                                            ),
+        .i_data_a   (data_a_in                                             ),
+        .i_data_b   (data_b_in                                             ),
+        .i_op       (op_in                                                 ),
+    )                                                                       ;
 
-    always@(posedge clk or posedge i_rst) begin
-
-        if (i_rst) begin
-            data_a <= 0;
-            data_b <= 0;
-            op     <= 0;
+    always@(posedge clk or posedge i_rst) 
+    begin
+        if (i_rst) 
+        begin
+            data_a_in       <= 0                                            ;
+            data_b_in       <= 0                                            ;
+            op_code_in      <= 0                                            ;
         end
-        
-        else begin
-            if(i_btn[0])begin
-                data_a <= i_sw_data;
+        else if(i_valid)
+        begin
+            if(i_btn[DATA_A])
+            begin
+                data_a_in   <= i_sw_data                                    ;
+                data_b_in   <= data_b_in                                    ;
+                op_code_in  <= op_code_in                                   ;
             end
-
-            else if (i_btn[1]) begin
-                data_b <= i_sw_data;
+            else if (i_btn[DATA_B]) 
+            begin
+                data_a_in   <= data_a_in                                    ;
+                data_b_in   <= i_sw_data                                    ;
+                op_code_in  <= op_code_in                                   ;
             end
-
-            else if(i_btn[2])begin
-                op <= i_sw_data[NB_OP-1:0];
+            else if(i_btn[OP_CODE])
+            begin
+                data_a_in   <= data_a_in                                    ;
+                data_b_in   <= data_b_in                                    ;
+                op_code_in  <= i_sw_data[NB_OP_CODE_IN  - 1 : 0]            ;
+            end
+            else
+            begin
+                data_a_in   <= data_a_in                                    ;
+                data_b_in   <= data_b_in                                    ;
+                op_code_in  <= op_code_in                                   ;
             end
         end    
+        else
+        begin
+            data_a_in       <= data_a_in                                    ;
+            data_b_in       <= data_b_in                                    ;
+            op_code_in      <= op_code_in                                   ;
+        end
     end    
 
+    assign o_led = {zero_out, carry_out, result_out}                        ;
+    
 endmodule

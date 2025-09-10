@@ -71,26 +71,14 @@ module top_alu
         else if(i_btn[DATA_A])                      
         begin                       
             data_a_in       <= i_sw_data                                                            ;
-            data_b_in       <= data_b_in                                                            ;
-            op_code_in      <= op_code_in                                                           ;
         end                     
         else if (i_btn[DATA_B])                         
         begin                       
-            data_a_in       <= data_a_in                                                            ;
             data_b_in       <= i_sw_data                                                            ;
-            op_code_in      <= op_code_in                                                           ;
         end                     
         else if(i_btn[OP_CODE])                     
         begin                       
-            data_a_in       <= data_a_in                                                            ;
-            data_b_in       <= data_b_in                                                            ;
             op_code_in      <= i_sw_data[NB_OP_CODE_IN  - 1 : 0]                                    ;
-        end                     
-        else                        
-        begin                       
-            data_a_in       <= data_a_in                                                            ;
-            data_b_in       <= data_b_in                                                            ;
-            op_code_in      <= op_code_in                                                           ;
         end                     
     end                         
 

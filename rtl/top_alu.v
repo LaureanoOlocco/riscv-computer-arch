@@ -2,7 +2,7 @@ module top_alu
 #(
     parameter                                  NB_DATA_OUT     = 10         ,
     parameter                                  NB_DATA_IN      = 8          ,   // Tamaño del bus de datos
-    parameter                                  NB_OP_CODE_IN   = 6              // Número de bits del código de operación
+    parameter                                  NB_OP_CODE_IN   = 6          ,    // Número de bits del código de operación
     parameter                                  NB_INPUT_SELECT = 3
 )
 (
@@ -20,9 +20,9 @@ module top_alu
 
     wire                                       zero_out                     ;
     wire                                       carry_out                    ;
-    wire         [NB_DAT_IN           - 1 : 0] result_out                   ;
-    reg          [NB_DAT_IN           - 1 : 0] data_a_in                    ; 
-    reg          [NB_DAT_IN           - 1 : 0] data_b_in                    ;
+    wire         [NB_DATA_IN          - 1 : 0] result_out                   ;
+    reg          [NB_DATA_IN          - 1 : 0] data_a_in                    ; 
+    reg          [NB_DATA_IN          - 1 : 0] data_b_in                    ;
     reg          [NB_OP_CODE_IN       - 1 : 0] op_code_in                   ;
    
     ALU #(

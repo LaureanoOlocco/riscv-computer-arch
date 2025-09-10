@@ -87,11 +87,11 @@ set_property PACKAGE_PIN U7 [get_ports {o_led[6]}]
 set_property PACKAGE_PIN U6 [get_ports {o_led[7]}]					
 	set_property IOSTANDARD LVCMOS33 [get_ports {o_led[7]}]
 ##Bank = 34, Pin name = IO_L10N_T1_34,						Sch name = LED8
-set_property PACKAGE_PIN V4 [get_ports {o_led[8]}]					
-	set_property IOSTANDARD LVCMOS33 [get_ports {o_led[8]}]
+#set_property PACKAGE_PIN V4 [get_ports {o_led[8]}]					
+	#set_property IOSTANDARD LVCMOS33 [get_ports {o_led[8]}]
 ##Bank = 34, Pin name = IO_L8N_T1_34,						Sch name = LED9
-set_property PACKAGE_PIN U3 [get_ports {o_led[9]}]					
-	set_property IOSTANDARD LVCMOS33 [get_ports {o_led[9]}]
+#set_property PACKAGE_PIN U3 [get_ports {o_led[9]}]					
+	#set_property IOSTANDARD LVCMOS33 [get_ports {o_led[9]}]
 ##Bank = 34, Pin name = IO_L7N_T1_34,						Sch name = LED10
 #set_property PACKAGE_PIN V1 [get_ports {led[10]}]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports {led[10]}]
@@ -118,17 +118,17 @@ set_property PACKAGE_PIN U3 [get_ports {o_led[9]}]
 #set_property PACKAGE_PIN F13 [get_ports RGB1_Green]				
 	#set_property IOSTANDARD LVCMOS33 [get_ports RGB1_Green]
 ##Bank = 35, Pin name = IO_L19N_T3_VREF_35,					Sch name = LED16_B
-#set_property PACKAGE_PIN F6 [get_ports RGB1_Blue]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports RGB1_Blue]
-##Bank = 34, Pin name = IO_0_34,								Sch name = LED17_R
+set_property PACKAGE_PIN F6 [get_ports o_led[8]]					
+	set_property IOSTANDARD LVCMOS33 [get_ports o_led[8]]
+##Bank = 34, Pin name = IO_0_34,							Sch name = LED17_R
 #set_property PACKAGE_PIN K6 [get_ports RGB2_Red]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports RGB2_Red]
 ##Bank = 35, Pin name = IO_24P_T3_35,						Sch name =  LED17_G
 #set_property PACKAGE_PIN H6 [get_ports RGB2_Green]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports RGB2_Green]
 ##Bank = CONFIG, Pin name = IO_L3N_T0_DQS_EMCCLK_14,			Sch name = LED17_B
-#set_property PACKAGE_PIN L16 [get_ports RGB2_Blue]					
-	#set_property IOSTANDARD LVCMOS33 [get_ports RGB2_Blue]
+set_property PACKAGE_PIN L16 [get_ports o_led[9]]					
+	set_property IOSTANDARD LVCMOS33 [get_ports o_led[9]]
 
 
 

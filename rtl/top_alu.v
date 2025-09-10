@@ -35,7 +35,7 @@ module top_alu
         .o_result   (result_out                                            ),
         .i_data_a   (data_a_in                                             ),
         .i_data_b   (data_b_in                                             ),
-        .i_op_code  (op_code_in)
+        .i_op_code  (op_code_in                                            )
     )                                                                       ;
 
     always@(posedge clock or posedge i_rst) 

@@ -27,7 +27,8 @@ module ALU
     localparam                                 SRL_OP = 6'b000010       ;
     localparam                                 NOR_OP = 6'b100111       ;
 
-    reg                  [NB_DATA        : 0]  result                   ;
+
+    reg          [NB_DATA               : 0]   result                   ;
 
     always @(*) 
     begin        

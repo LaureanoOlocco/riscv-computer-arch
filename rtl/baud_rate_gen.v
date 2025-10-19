@@ -1,56 +1,38 @@
-module baud_rate_gen
+module baud_rate_gen 
 #(
-    parameter CLK_FREQ  = 100000000,    // Frecuencia del reloj del sistema 100 MHz
-    parameter BAUD_RATE = 115200        // Baud Rate de operación
-)
+    parameter                                               CLK_FREQ  = 100_000_000 ,
+    parameter                                               BAUD_RATE = 115_200
+) 
 (
-    input  wire i_clk     , // Clock del sistema
-    input  wire i_valid   , // Le da comienzo a generar ticks
-    output wire o_baud_tick // Tick para los módulos
+    output wire                                             o_baud_tick             ,
+    input  wire                                             i_valid                 ,
+    input  wire                                             i_rst                   ,
+    input  wire                                             clock                   ,
 );
+    localparam                                              NB_COUNTER = 32         ;
 
-    // Cada cierta cantidad de clk, un tick
-    localparam integer DIVISOR = CLK_FREQ / BAUD_RATE;
-    
-    reg [31:0] r_count          ;   // Contador de clk para un tick
-    reg        r_delay_for_tick ;   // Delay para un tick, para que llegue a operar bien la lógica
-    reg        r_tick           ;   // Registro para modificar los ticks
-    
-    always @(posedge i_clk) begin // or posedge i_valid) begin
-    
-            // Habilitado a generar ticks
-        if (i_valid) begin
-            
-                // Si la cantidad de clk alcanzó al divisor, genero el tick
-            if (r_count == DIVISOR -1) begin
-                r_count <= 0;
-                r_tick <= 1;     // Probar si alcanzará con un solo ciclo de reloj para que los otros módulos actúen
-                r_delay_for_tick <= 4'b1111;
-            end
-            
-                // Si clk no alcanza al divisor, sumo
-            else begin
-                r_count <= r_count + 1;
-                
-                if (r_delay_for_tick == 0) begin          // Si el delay llegó a 0, bajo el tick
-                    r_tick <= 0;
-                end
-                
-                else begin
-                    r_delay_for_tick <= r_delay_for_tick - 1;   // Decremento el delay
-                end
-            end
-            
-        end
-        
-            // Estado de reset, todo en 0
-        else begin
-            r_count <= 0;
-            r_tick <= 0;
+    reg [NB_COUNTER                                - 1 : 0] counter                 ;
+    reg                                                     tick                    ;
+
+    always @(posedge clock or posedge i_rst) 
+    begin
+        if (i_rst) 
+        begin
+            counter         <= {NB_COUNTER{1'b0}}                                   ;
+            tick            <= 1'b0                                                 ;
+        end 
+        else if (i_valid) 
+        begin
+            {tick, counter} <= counter + BAUD_RATE >= CLK_FREQ                      ?
+                               {1'b1, counter + BAUD_RATE - CLK_FREQ}               :
+                               {1'b0, counter + BAUD_RATE}                          ;
+        end 
+        else 
+        begin
+            tick <= 1'b0                                                            ;
         end
     end
-    
-    assign o_baud_tick = r_tick;
-    
-endmodule
 
+    assign o_baud_tick = tick                                                       ;  
+
+endmodule

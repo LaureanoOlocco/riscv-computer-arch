@@ -1,123 +1,162 @@
-module top_uart
+module top
 #(
-    parameter NB_DATA   = 8,            // Bits de datos de uart y cant. bits para operandos
-    parameter NB_OP     = 6,            // Bits para una operación
-    
-    parameter CLK_FREQ  = 100000000,    // Frecuencia del reloj del sistema 100 MHz
-    parameter BAUD_RATE = 115200   ,    // Baud rate establecido
-        // (FLAGS DE RX A IMPLEMENTAR FUNCIONAMIENTO)
-    parameter F_RX_PARITY    = 2'b00,   // 00 = sin paridad, 01 = paridad par, 10 = paridad impar
-    parameter F_RX_STOP_BITS = 1'b1 ,   // 0 = sin bit de stop, 1 = con bit de stop
-    parameter F_RX_SYNC      = 1'b1     // 1 = asíncrono, 0 = síncrono
-)
+    parameter NB_COUNTER      = 9                          ,       
+    parameter NB_OP_CODE      = 6                          ,                                  
+    parameter NB_DATA         = 8                          ,       
+    parameter NB_TICK_CNT     = 4                          ,                                             
+    parameter NB_ADDRESS      = 4                          ,           
+    parameter NB_COUNT        = 3                          ,        
+    parameter NB_REG          = 32                         ,    
+    parameter BAUD_RATE       = 115_200                    ,
+    parameter CLK_FREQ        = 100_000_000 
+
+) 
 (
-    input  wire       clk      ,    // Clock interno
-    input  wire       i_rst    ,    // Entrada de reset
-    input  wire       i_uart_rx,    // Conexión de entrada de datos uart
-    output wire       o_uart_tx,    // Conexión de salida de datos uart
-    output wire [2:0] o_uart_led    // Leds de comunicación uart    (AGREGO DE ESTADOS? PARA INTERFAZ)
-);
+    output [1 : 0] o_uart                                  ,
+    output         i_tx                                    ,
+    input          i_rx                                    ,
+    input          i_rst                                   ,
+    input          clk
+)                                                          ;
 
+    wire                        counter_tick_to_uart       ;
+    wire                        uart_rx_done_to_fifo_wr    ;
+    wire                        fifo_rx_empty_to_interface ;
+    wire                        interface_to_fifo_rx_rd    ;
+    wire                        interface_to_fifo_tx_wr    ;
+    wire                        interface_to_tx_start      ;
+    wire                        uart_tx_done_to_interface  ;
+    wire [NB_REG       - 1 : 0] interface_to_alu_a         ;
+    wire [NB_REG       - 1 : 0] interface_to_alu_b         ;
+    wire [NB_REG       - 1 : 0] alu_out_to_interface       ;    
+    wire [NB_DATA      - 1 : 0] interface_to_fifo_tx_wdata ;
+    wire [NB_DATA      - 1 : 0] fifo_rx_rdata_to_interface ;
+    wire [NB_DATA      - 1 : 0] fifo_tx_rdata_to_uart_tx   ;
+    wire [NB_DATA      - 1 : 0] uart_rx_data_to_fifo_wdata ;
+    wire [NB_OP_CODE   - 1 : 0] interface_to_alu_op        ;
 
-    // ACÁ CREAR LOS REGISTROS PARA INTERCONECTAR LOS MÓDULOS
-    // PARA LOS REG QUE INTERCONECTAN, USAR w_... para un wire
-    
-    wire [NB_DATA-1:0] w_data_a;  // Wire para conectar data a de interface a entrada de alu
-    wire [NB_DATA-1:0] w_data_b;  // Wire para conectar data b de interface a entrada de alu
-    wire [NB_OP  -1:0] w_op;      // Wire para conectar op de interface a alu
-    wire [NB_DATA-1:0] w_rx_data; // Wire para conectar info de rx a la interface
-    wire               w_rx_done; // Wire para la flag de recepción lista
-    wire [NB_DATA-1:0] w_tx_data; // Wire para conectar info de la interface a tx
-    wire               w_tx_done; // Wire para la flag de transmisión lista 
-    wire [NB_DATA-1:0] w_result;  // Conecta salida de la ALU con entrada de la interface
-    wire               w_new_data;// Informa a TX que la interface tiene un nuevo valor
+    assign o_uart[0] = i_rx                                ;
+    assign o_uart[1] = i_tx                                ;
 
-
-    // Instancia RX
-
-    uart_rx #(
-        .NB_DATA        (NB_DATA)       ,
-        //.NB_OP          (NB_OP)         ,
-        .F_RX_PARITY    (F_RX_PARITY)   ,
-        .F_RX_STOP_BITS (F_RX_STOP_BITS),
-        .F_RX_SYNC      (F_RX_SYNC)
-    )
-    rx_instance (
-        .clk       (clk)      ,
-        .i_rst     (i_rst)    ,
-        .i_rx      (i_uart_rx),     // Pin de entrada de recepción uart
-        .o_rx_data (w_rx_data),
-        .o_rx_done (w_rx_done)
-    );
-    
-
-    // Instancia TX
-    
-    uart_tx #(
-        .NB_DATA        (NB_DATA)       ,
-        //.NB_OP          (NB_OP)         ,
-        .F_RX_PARITY    (F_RX_PARITY)   ,
-        .F_RX_STOP_BITS (F_RX_STOP_BITS),
-        .F_RX_SYNC      (F_RX_SYNC)
-    )
-    tx_instance (
-        .clk            (clk)      ,
-        .i_rst          (i_rst)    ,
-        .o_tx           (o_uart_tx),
-        .o_tx_done      (w_tx_done),
-        .i_data         (w_tx_data),
-        .i_new_data     (w_new_data)
-    );
-
-    // Instancia Interface
-
-    interface #(
-        .NB_DATA(NB_DATA),
-        .NB_OP  (NB_OP)
-    )
-    interface_instance (
-        .clk            (clk)      ,
-        .i_rst          (i_rst)    ,
-        .i_rx_uart_data (w_rx_data),
-        .i_rx_uart_done (w_rx_done),
-        .o_leds         (o_uart_led),
-        .o_update_alu   (w_valid)  ,
-        .o_data_a       (w_data_a) ,
-        .o_data_b       (w_data_b) ,
-        .o_op           (w_op),
-        .o_tx_uart_data (w_tx_data),
-        .i_result       (w_result),
-        .o_new_data     (w_new_data),
-        .i_tx_done      (w_tx_done)
-    );
-
-    // Instancia ALU
-    
-    ALU #(
-        .NB_DATA(NB_DATA),
-        .NB_OP  (NB_OP)
-    )
-    alu_instance (
-        .clk      (clk),
-        .i_rst    (i_rst),
-        .i_valid  (w_valid)  ,          // CREAR VALID ENTRE INTERFAZ Y ALU
-        .i_data_a (w_data_a) ,          // SALIDA DE INTERFAZ DE 8 BITS, ENTRADA DE ALU DE 8 BITS
-        .i_data_b (w_data_b) ,          // SALIDA DE INTERFAZ DE 8 BITS, ENTRADA DE ALU DE 8 BITS
-        .i_op     (w_op)     ,          // Operación a realizar, recibida también por UART
-        .o_result (w_result)            // Resultado de la ALU, salida de 8 bits, se conecta a una entrada en la interface
-    );
-
-    // Instancia Baud Rate Generator
-    
-//    baud_rate_gen #(
-//        .CLK_FREQ(CLK_FREQ),
-//        .BAUD_RATE(BAUD_RATE)
-//    )
-//    baud_rate_instance (
-//        
-//    );
-
-    
+    baud_rate_gen
+    #(
+        .NB_COUNTER (NB_COUNTER                            )
         
-endmodule
+    )
+    baud_rate_gen_unit
+    (
+        .o_counter (                                       ),  
+        .o_tick    (counter_tick_to_uart                   ),  
+        .i_rst     (i_rst                                  ),  
+        .clk       (clk                                    )   
+    )                                                      ;
 
+    alu
+    #(
+        .NB_REG      (NB_REG                               ),
+        .NB_OP_CODE  (NB_OP_CODE                           )
+    )
+    alu_unit
+    (
+        .o_out (alu_out_to_interface                       ),  
+        .i_a   (interface_to_alu_a                         ),  
+        .i_b   (interface_to_alu_b                         ),  
+        .i_op  (interface_to_alu_op                        )   
+    )                                                      ;
+    
+    interface
+    #(
+        .NB_DATA    (NB_DATA                               ),
+        .NB_REG     (NB_REG                                ),
+        .NB_OP_CODE (NB_OP_CODE                            ),
+        .NB_COUNT   (NB_COUNT                              )
+    )
+
+    interface_unit
+    (
+        .o_tx_start (interface_to_tx_start                 ),  
+        .o_rd       (interface_to_fifo_rx_rd               ),  
+        .o_wr       (interface_to_fifo_tx_wr               ),  
+        .o_alu_out  (interface_to_fifo_tx_wdata            ),  
+        .o_alu_a    (interface_to_alu_a                    ),  
+        .o_alu_b    (interface_to_alu_b                    ),  
+        .o_alu_op   (interface_to_alu_op                   ),  
+        .i_alu_out  (alu_out_to_interface                  ),  
+        .i_rx_data  (fifo_rx_rdata_to_interface            ),  
+        .i_rx_done  (uart_rx_done_to_fifo_wr               ),  
+        .i_rx_empty (fifo_rx_empty_to_interface            ),  
+        .i_tx_done  (uart_tx_done_to_interface             ),  
+        .i_rst      (i_rst                                 ),  
+        .clk        (clk                                   )   
+    )                                                      ;
+
+//----------------------------------------- FIFO INSTANCES --------------------------------------------//
+
+    fifo
+    #(
+        .NB_DATA    (NB_DATA                               ),
+        .NB_ADDRESS (NB_ADDRESS                            )
+    )
+    fifo_rx_unit
+    (
+        .o_rdata (fifo_rx_rdata_to_interface               ),  
+        .o_empty (fifo_rx_empty_to_interface               ),  
+        .o_full  (                                         ),  
+        .i_rd    (interface_to_fifo_rx_rd                  ),  
+        .i_wr    (uart_rx_done_to_fifo_wr                  ),  
+        .i_wdata (uart_rx_data_to_fifo_wdata               ),  
+        .i_rst   (i_rst                                    ),  
+        .clk     (clk                                      )   
+    )                                                      ;
+        
+    fifo
+    #(
+        .NB_DATA    (NB_DATA                               ),
+        .NB_ADDRESS (NB_ADDRESS                            )
+    )
+    fifo_tx_unit
+    (
+        .o_rdata (fifo_tx_rdata_to_uart_tx                 ),  
+        .o_empty (fifo_tx_empty_to_led                     ), 
+        .o_full  (                                         ), 
+        .i_rd    (interface_to_tx_start                    ), 
+        .i_wr    (interface_to_fifo_tx_wr                  ), 
+        .i_wdata (interface_to_fifo_tx_wdata               ),
+        .i_rst   (i_rst                                    ),  
+        .clk     (clk                                      )   
+    )                                                      ;    
+
+//----------------------------------------- UART INSTANCES --------------------------------------------//
+
+    uart_rx
+    #( 
+        .NB_DATA     (NB_DATA                              ),
+        .NB_TICK_CNT (NB_TICK_CNT                          )
+    )
+    uart_rx_unit
+    (
+        .o_data    (uart_rx_data_to_fifo_wdata             ),  
+        .o_rx_done (uart_rx_done_to_fifo_wr                ),  
+        .i_rx      (i_rx                                   ),  
+        .i_stick   (counter_tick_to_uart                   ),  
+        .i_rst     (i_rst                                  ),  
+        .clk       (clk                                    )     
+    )                                                      ;
+
+    uart_tx
+    # (
+        .NB_DATA     (NB_DATA                              ),
+        .NB_TICK_CNT (NB_TICK_CNT                          )
+    )
+    uart_tx_unit
+    (  
+        .o_tx      (i_tx                                   ),  
+        .o_tx_done (uart_tx_done_to_interface              ),  
+        .i_data    (fifo_tx_rdata_to_uart_tx               ),  
+        .i_tx_start(interface_to_tx_start                  ),        
+        .i_stick   (counter_tick_to_uart                   ),  
+        .i_rst     (i_rst                                  ),  
+        .clk       (clk                                    )   
+    )                                                      ;
+
+endmodule

@@ -15,7 +15,6 @@ module uart_rx
     localparam                                                                  NB_STATE   = 2                  ;
     localparam                                                                  NB_SAMPLE  = $clog2(SM_TICK)    ;
     localparam                                                                  NB_BIT_CNT = $clog2(NB_DATA)    ;
-    localparam                                                                  
     localparam  [NB_STATE                                              - 1 : 0]
                                                                                 STATE_IDLE = 2'b00              ,
                                                                                 STATE_START= 2'b01              ,
@@ -52,7 +51,7 @@ module uart_rx
         end
         STATE_START                                                                                             :
         begin
-            if(bits_next)
+            if(i_s_tick)
             begin
                 if(sample_reg == (SM_TICK / 2 - 1))
                 begin
@@ -65,19 +64,19 @@ module uart_rx
                 else
                 begin
                     rx_done_tick    = 1'b0                                                                      ;                                                          
-                    sample_next     = sample_reg                                                                ;
+                    sample_next     = sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                               ;
                     bit_index_next  = bit_index_reg                                                             ;
-                    bits_next       = bit_index_next                                                            ;
+                    bits_next       = bits_reg                                                                  ;
                     state_next      = state_reg                                                                 ;
                 end
             end
             else
             begin
-                    rx_done_tick    = 1'b0                                                                      ;
-                    sample_next     = sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                               ;
-                    bit_index_next  = bit_index_reg                                                             ;
-                    bits_next       = bit_index_next                                                            ;
-                    state_next      = state_reg                                                                 ;
+                rx_done_tick    = 1'b0                                                                      ;
+                sample_next     = sample_reg                                                                ;
+                bit_index_next  = bit_index_reg                                                             ;
+                bits_next       = bits_reg                                                                  ;
+                state_next      = state_reg                                                                 ;
             end
         end
         STATE_DATA                                                                                              :
@@ -105,7 +104,7 @@ module uart_rx
                     rx_done_tick    = 1'b0                                                                      ;
                     sample_next     = sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                               ;
                     bit_index_next  = bit_index_reg                                                             ;
-                    bits_next       = bit_index_next                                                            ;
+                    bits_next       = bits_reg                                                                  ;
                     state_next      = state_reg                                                                 ;
                 end
             end
@@ -118,8 +117,8 @@ module uart_rx
                 begin
                     sample_next     = sample_reg                                                                ;
                     bit_index_next  = bit_index_reg                                                             ;
-                    bits_next       = bit_index_next                                                            ;
-                    state_next      = DATA_STATE                                                                ;
+                    bits_next       = bits_reg                                                                  ;
+                    state_next      = STATE_IDLE                                                                ;
                     if(i_rx)
                     begin
                         rx_done_tick= 1'b1                                                                      ;
@@ -134,7 +133,7 @@ module uart_rx
                     rx_done_tick    = 1'b0                                                                      ;
                     sample_next     = sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                               ;
                     bit_index_next  = bit_index_reg                                                             ;
-                    bits_next       = bit_index_next                                                            ;
+                    bits_next       = bits_reg                                                                  ;
                     state_next      = state_reg                                                                 ;
                 end
             end

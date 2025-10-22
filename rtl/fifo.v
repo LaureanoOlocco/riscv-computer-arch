@@ -1,7 +1,7 @@
 module fifo 
 #(
     parameter                                                                   NB_DATA    = 8                  ,                         
-    parameter 																		                              NB_ADDRESS = 4                                
+    parameter 																	NB_ADDRESS = 4                                
 ) 
 (
     output wire [NB_DATA                                               - 1 : 0] o_data                          ,                  
@@ -58,7 +58,7 @@ module fifo
           begin
               if (~full_flag) 
               begin
-                  wr_ptr_next   = wr_ptr + {NB_ADDRESS - 1 {1'b0}, 1'b1}                                        ;
+                  wr_ptr_next   = wr_ptr + {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                     ;
                   rd_ptr_next   = rd_ptr                                                                        ;
                   empty_next    = 1'b0                                                                          ;
                   if ((wr_ptr + 1'b1) == rd_ptr)
@@ -69,15 +69,15 @@ module fifo
           end
           STATE_RW                                                                                              : 
           begin 
-              wr_ptr_next       = wr_ptr +  {NB_ADDRESS - 1 {1'b0}, 1'b1}                                       ;
-              rd_ptr_next       = rd_ptr +  {NB_ADDRESS - 1 {1'b0}, 1'b1}                                       ;
+              wr_ptr_next       = wr_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                    ;
+              rd_ptr_next       = rd_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                    ;
               empty_next        = empty_flag                                                                    ;
               full_next         = full_flag                                                                     ;
           end 
         endcase
     end
 
-    always @(posedge clock) 
+    always @(posedge clock or negedge i_rst) 
     begin
         if (i_rst) 
         begin
@@ -97,7 +97,7 @@ module fifo
 
     assign wr_en  = i_wr & ~full_flag                                                                           ;
 
-    always @(posedge clock) 
+    always @(posedge clock or posedge i_rst) 
     begin
       if (i_rst)
       begin

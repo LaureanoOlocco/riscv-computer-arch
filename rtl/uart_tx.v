@@ -39,116 +39,116 @@ module uart_tx
 		shifter_next                = shifter_reg                                                                   ;
 		state_next                  = state_reg                                                                     ;
 		case (state_reg)
-		STATE_IDLE                                                                                                  :     
-    begin
-		  tx_done_tick            	= 1'b0                                                                          ;
-			tx_next                 	= 1'b1                                                                          ;
-			if (i_tx_start) 
-      begin
-				sample_next         		= {NB_SAMPLE{1'b0}}                                                             ;
-				bit_index_next      		= {NB_BIT_CNT{1'b0}}                                                            ;
-				shifter_next        		= i_data                                                                        ;
-				state_next          		= STATE_START                                                                   ;
-			end
-      else
-      begin
-        sample_next          		= sample_reg                                                                   	;
-        bit_index_next       		= bit_index_reg                                                                	;
-        shifter_next         		= shifter_reg                                                                  	;
-        state_next           		= state_reg                                                                    	;
-      end
-		end
-		STATE_START                                                                                                 : 
-    begin
-		  tx_done_tick            	= 1'b0                                                                        	;
-			tx_next                 	= 1'b0                                                                        	;
-      shifter_next            	= shifter_reg                                                                   ;
-			if (i_s_tick) 
-      begin
-				if (sample_reg == (SM_TICK / 2 - 1)) 
-        begin
-					bit_index_next				= {NB_BIT_CNT{1'b0}}																														;
-					sample_next     			= {NB_SAMPLE{1'b0}}                                                             ;
-					state_next      			= STATE_DATA                                                                    ;
-				end 
-        else 
-        begin
-					bit_index_next				= bit_index_reg																																	;
-					sample_next     			= sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                                   ;
-         	state_next      			= state_reg                                                               			;
+			STATE_IDLE                                                                                                :     
+    	begin
+			  tx_done_tick            	= 1'b0                                                                        ;
+				tx_next                 	= 1'b1                                                                        ;
+				if (i_tx_start) 
+    	  begin
+					sample_next         		= {NB_SAMPLE{1'b0}}                                                           ;
+					bit_index_next      		= {NB_BIT_CNT{1'b0}}                                                          ;
+					shifter_next        		= i_data                                                                      ;
+					state_next          		= STATE_START                                                                 ;
 				end
+    	  else
+    	  begin
+    	    sample_next          		= sample_reg                                                                  ;
+    	    bit_index_next       		= bit_index_reg                                                               ;
+    	    shifter_next         		= shifter_reg                                                                 ;
+    	    state_next           		= state_reg                                                                   ;
+    	  end
 			end
-			else
-			begin
-				bit_index_next					= bit_index_reg																																	;
-				sample_next							= sample_reg																																		;
-				state_next							= state_reg																																			;
-			end
-		end
-		STATE_DATA                                                                                                  : 
-    begin
-		  tx_done_tick            	= 1'b0                                                                          ;
-			tx_next                 	= shifter_reg[0]                                                                ;
-			if (i_s_tick)
-      begin
-				if (&sample_reg) 
-        begin
-					sample_next     			= {NB_SAMPLE{1'b0}}                                                             ;
-					shifter_next    			= {1'b0, shifter_reg[NB_DATA - 1 : 1]}                                          ;
-					if (&bit_index_reg) 
-          begin
-            bit_index_next 			= bit_index_reg                                                              		;
-						state_next  				= STATE_STOP                                                                    ;
-					end 
-          else 
-          begin
-						bit_index_next  		= bit_index_reg + {{NB_BIT_CNT - 1 {1'b0}}, 1'b1}                           		;
-            state_next      		= state_reg                                                                 		;
-					end
-				end 
-        else 
-        begin
-          bit_index_next      	= bit_index_reg                                                             		;
-					sample_next         	= sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                               		;
-          shifter_next        	= shifter_reg                                                               		;
-          state_next          	= state_reg                                                                 		;
-				end
-			end
-			else
-			begin
-				bit_index_next      		= bit_index_reg                                                             		;
-				sample_next         		= sample_reg																						                     		;
- 				shifter_next        		= shifter_reg                                                               		;
- 				state_next          		= state_reg                                                                 		;
-			end
-		end
-		STATE_STOP                                                                                                  : 
-    begin
-        tx_next                	= 1'b1                                                                      		;
-        bit_index_next         	= bit_index_reg                                                             		;
-        shifter_next           	= shifter_reg                                                               		;
+			STATE_START                                                                                               : 
+    	begin
+			  tx_done_tick            	= 1'b0                                                                        ;
+				tx_next                 	= 1'b0                                                                        ;
+    	  shifter_next            	= shifter_reg                                                                 ;
 				if (i_s_tick) 
-        begin
-					if (&sample_reg) 
-          begin
-						tx_done_tick        = 1'b1                                                                      		;
-						sample_next         = {NB_SAMPLE{1'b0}}                                                         		;
-						state_next          = STATE_IDLE                                                                		;
+    	  begin
+					if (sample_reg == (SM_TICK - 1)) 
+    	    begin
+						bit_index_next				= {NB_BIT_CNT{1'b0}}																													;
+						sample_next     			= {NB_SAMPLE{1'b0}}                                                           ;
+						state_next      			= STATE_DATA                                                                  ;
 					end 
-        	else 
-        	begin
-        	  tx_done_tick        = 1'b0                                                                      		;
-						sample_next         = sample_reg + {{NB_SAMPLE-1{1'b0}}, 1'b1}                                  		;
-        	  state_next          = state_reg                                                                 		;
+    	    else 
+    	    begin
+						bit_index_next				= bit_index_reg																																;
+						sample_next     			= sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                                 ;
+    	     	state_next      			= state_reg                                                               		;
 					end
+				end
+				else
+				begin
+					bit_index_next					= bit_index_reg																																;
+					sample_next							= sample_reg																																	;
+					state_next							= state_reg																																		;
+				end
 			end
-      else
-      begin
-          tx_done_tick         	= 1'b0                                                                      		;
-          sample_next          	= sample_reg                                                                		;
-          state_next           	= state_reg                                                                 		;
-      end
-		end
+			STATE_DATA                                                                                                : 
+    	begin
+			  tx_done_tick            	= 1'b0                                                                        ;
+				tx_next                 	= shifter_reg[0]                                                              ;
+				if (i_s_tick)
+    	  begin
+					if (&sample_reg) 
+    	    begin
+						sample_next     			= {NB_SAMPLE{1'b0}}                                                           ;
+						shifter_next    			= {1'b0, shifter_reg[NB_DATA - 1 : 1]}                                        ;
+						if (&bit_index_reg) 
+    	      begin
+    	        bit_index_next 			= bit_index_reg                                                              	;
+							state_next  				= STATE_STOP                                                                  ;
+						end 
+    	      else 
+    	      begin
+							bit_index_next  		= bit_index_reg + {{NB_BIT_CNT - 1 {1'b0}}, 1'b1}                           	;
+    	        state_next      		= state_reg                                                                 	;
+						end
+					end 
+    	    else 
+    	    begin
+    	      bit_index_next      	= bit_index_reg                                                             	;
+						sample_next         	= sample_reg + {{NB_SAMPLE - 1 {1'b0}}, 1'b1}                               	;
+    	      shifter_next        	= shifter_reg                                                               	;
+    	      state_next          	= state_reg                                                                 	;
+					end
+				end
+				else
+				begin
+					bit_index_next      		= bit_index_reg                                                             	;
+					sample_next         		= sample_reg																						                     	;
+ 					shifter_next        		= shifter_reg                                                               	;
+ 					state_next          		= state_reg                                                                 	;
+				end
+			end
+			STATE_STOP                                                                                                : 
+    	begin
+    	    tx_next                	= 1'b1                                                                      	;
+    	    bit_index_next         	= bit_index_reg                                                             	;
+    	    shifter_next           	= shifter_reg                                                               	;
+					if (i_s_tick) 
+    	    begin
+						if (&sample_reg) 
+    	      begin
+							tx_done_tick        = 1'b1                                                                      	;
+							sample_next         = {NB_SAMPLE{1'b0}}                                                         	;
+							state_next          = STATE_IDLE                                                                	;
+						end 
+    	    	else 
+    	    	begin
+    	    	  tx_done_tick        = 1'b0                                                                      	;
+							sample_next         = sample_reg + {{NB_SAMPLE - 1{1'b0}}, 1'b1}                                	;
+    	    	  state_next          = state_reg                                                                 	;
+						end
+				end
+    	  else
+    	  begin
+    	      tx_done_tick         	= 1'b0                                                                      	;
+    	      sample_next          	= sample_reg                                                                	;
+    	      state_next           	= state_reg                                                                 	;
+    	  end
+			end
 
 		endcase
 	end

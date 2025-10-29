@@ -27,26 +27,24 @@ module uart_rx
      reg        [NB_DATA                                               - 1 : 0] bits_reg, bits_next             ; 
      reg                                                                        rx_done_tick                    ;
      
-    
-            
             
      always @(*)
      begin
-         rx_done_tick    = 1'b0                                                                                  ;
-         sample_next     = sample_reg                                                                            ;
-         bit_index_next  = bit_index_reg                                                                         ;
-         bits_next       = bits_reg                                                                              ;
-         state_next      = state_reg                                                                             ;
+         rx_done_tick               = 1'b0                                                                      ;
+         sample_next                = sample_reg                                                                ;
+         bit_index_next             = bit_index_reg                                                             ;
+         bits_next                  = bits_reg                                                                  ;
+         state_next                 = state_reg                                                                 ;
         case (state_reg)
          STATE_IDLE                                                                                             :
          begin
             if(~i_rx)
             begin
-                rx_done_tick    = 1'b0                                                                          ;
-                sample_next     = {NB_SAMPLE{1'b0}}                                                             ;
-                bit_index_next  = bit_index_reg                                                                 ;
-                bits_next       = bits_reg                                                                      ;
-                state_next      = STATE_START                                                                   ;
+                rx_done_tick        = 1'b0                                                                      ;
+                sample_next         = {NB_SAMPLE{1'b0}}                                                         ;
+                bit_index_next      = bit_index_reg                                                             ;
+                bits_next           = bits_reg                                                                  ;
+                state_next          = STATE_START                                                               ;
             end
         end
         STATE_START                                                                                             :
@@ -72,11 +70,11 @@ module uart_rx
             end
             else
             begin
-                rx_done_tick    = 1'b0                                                                      ;
-                sample_next     = sample_reg                                                                ;
-                bit_index_next  = bit_index_reg                                                             ;
-                bits_next       = bits_reg                                                                  ;
-                state_next      = state_reg                                                                 ;
+                rx_done_tick        = 1'b0                                                                      ;
+                sample_next         = sample_reg                                                                ;
+                bit_index_next      = bit_index_reg                                                             ;
+                bits_next           = bits_reg                                                                  ;
+                state_next          = state_reg                                                                 ;
             end
         end
         STATE_DATA                                                                                              :

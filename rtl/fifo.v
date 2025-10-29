@@ -1,3 +1,5 @@
+`default_nettype none
+
 module fifo 
 #(
     parameter                                                                   NB_DATA    = 8                  ,                         
@@ -12,7 +14,7 @@ module fifo
     input  wire [NB_DATA                                               - 1 : 0] i_data                          ,                  
     input  wire                                                                 i_rst                           ,                  
     input  wire                                                                 clock                         
-)                                                                                                               ;
+);
 
     localparam                                                                  STATE_READ  = 2'b01             ;
     localparam                                                                  STATE_WRITE = 2'b10             ; 
@@ -29,9 +31,21 @@ module fifo
     reg                                                                         full_next                       ;
     reg                                                                         empty_flag                      ; 
     reg                                                                         empty_next                      ;
+    reg [NB_DATA-1:0] data_out_reg;
+
 
     wire                                                                        wr_en                           ;
     integer                                                                     ptr                             ;
+
+    always @(posedge clock or posedge i_rst) begin
+    if (i_rst) begin
+        data_out_reg <= {NB_DATA{1'b0}};
+    end else if (i_rd && ~empty_flag) begin
+        // Capturá el dato que vas a leer (antes de mover rd_ptr)
+        data_out_reg <= fifo_buffer[rd_ptr];
+    end
+    end
+
 
     always @(*) 
     begin
@@ -41,43 +55,48 @@ module fifo
         empty_next  = empty_flag                                                                                ;
 
         case ({i_wr,i_rd})
-          STATE_READ                                                                                            : 
+          STATE_READ: 
           begin
               if (~empty_flag) 
               begin
                   wr_ptr_next   = wr_ptr                                                                        ;
                   rd_ptr_next   = rd_ptr + {{NB_ADDRESS - 1 {1'b0}}, 1'b1}                                      ;
                   full_next     = 1'b0                                                                          ;
-                  if ((rd_ptr + 1'b1) == wr_ptr)
+                  // Check if will be empty after read
+                  if ((rd_ptr + {{NB_ADDRESS - 1 {1'b0}}, 1'b1}) == wr_ptr)
                   begin
                       empty_next = 1'b1                                                                         ;                        
                   end
               end
           end
-          STATE_WRITE                                                                                           :
+          STATE_WRITE:
           begin
               if (~full_flag) 
               begin
                   wr_ptr_next   = wr_ptr + {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                     ;
                   rd_ptr_next   = rd_ptr                                                                        ;
                   empty_next    = 1'b0                                                                          ;
-                  if ((wr_ptr + 1'b1) == rd_ptr)
+                  // Check if will be full after write
+                  if ((wr_ptr + {{(NB_ADDRESS - 1){1'b0}}, 1'b1}) == rd_ptr)
                   begin
                       full_next = 1'b1                                                                          ;
                   end
               end
           end
-          STATE_RW                                                                                              : 
+          STATE_RW: 
           begin 
-              wr_ptr_next       = wr_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                    ;
-              rd_ptr_next       = rd_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                    ;
-              empty_next        = empty_flag                                                                    ;
-              full_next         = full_flag                                                                     ;
+              if (~empty_flag)  // Can read
+              begin
+                  wr_ptr_next       = wr_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                ;
+                  rd_ptr_next       = rd_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                ;
+                  empty_next        = empty_flag                                                                ;
+                  full_next         = full_flag                                                                 ;
+              end
           end 
         endcase
     end
 
-    always @(posedge clock or negedge i_rst) 
+    always @(posedge clock or posedge i_rst) 
     begin
         if (i_rst) 
         begin
@@ -95,7 +114,7 @@ module fifo
         end
     end
 
-    assign wr_en  = i_wr & ~full_flag                                                                           ;
+    assign wr_en  = i_wr & ~full_flag                                                                          ;
 
     always @(posedge clock or posedge i_rst) 
     begin

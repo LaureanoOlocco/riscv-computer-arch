@@ -254,6 +254,32 @@ module tb_top_uart;
         end
     end
 
+    initial 
+    begin
+        forever 
+        begin
+            @(posedge clock)                                                                    ;
+            if (dut.u_interface_uart.state_reg == 3'b110)  // STATE_SEND
+            begin
+                $display("[DEBUG] In SEND: data_count=%0d tx_done=%b tx_start=%b @ %0t", 
+                         dut.u_interface_uart.data_count,
+                         dut.u_interface_uart.tx_done_reg,
+                         dut.u_interface_uart.o_tx_start,
+                         $time)                                                                 ;
+            end
+        end
+    end
+
+    initial 
+    begin
+        forever 
+        begin
+            @(posedge dut.u_interface_uart.o_tx_start)                                         ;
+            $display("[DEBUG] TX_START activated @ %0t ns - FIFO_TX data: 0x%02h", 
+                     $time, dut.u_fifo_tx.o_data)                                               ;
+        end
+    end
+
     //========================================
     // Main test sequence
     //========================================
@@ -289,6 +315,7 @@ module tb_top_uart;
         $display("CLK_FREQ  = %0d Hz", CLK_FREQ)                                                ;
         $display("BAUD_RATE = %0d bps", BAUD_RATE)                                              ;
         $display("SM_TICK   = %0d", SM_TICK)                                                    ;
+        $display("Expected counter divisor = %0d", CLK_FREQ/(BAUD_RATE*SM_TICK))               ;
         $display("========================================\n")                                  ;
 
         //----------------------------------------

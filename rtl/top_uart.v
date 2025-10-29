@@ -8,7 +8,8 @@ module top_uart
     parameter                                                                   NB_REG          = 32                    ,    
     parameter                                                                   BAUD_RATE       = 115_200               ,
     parameter                                                                   CLK_FREQ        = 100_000_000           ,
-    parameter                                                                   NB_UART_OUT     = 2   
+    parameter                                                                   NB_UART_OUT     = 2                     ,
+    parameter                                                                   NB_COUNTER      = 9
 
 ) 
 (
@@ -22,8 +23,10 @@ module top_uart
     wire                                                                        counter_tick_to_uart                    ;
     wire                                                                        uart_rx_done_to_fifo_wr                 ;
     wire                                                                        fifo_rx_empty_to_interface              ;
+    wire                                                                        fifo_tx_empty_to_interface              ; // ← NUEVO
     wire                                                                        interface_to_fifo_rx_rd                 ;
     wire                                                                        interface_to_fifo_tx_wr                 ;
+    wire                                                                        interface_to_fifo_tx_rd                 ;
     wire                                                                        interface_to_tx_start                   ;
     wire                                                                        uart_tx_done_to_interface               ;
     wire        [NB_REG                                                - 1 : 0] interface_to_alu_data_a                 ;
@@ -35,31 +38,19 @@ module top_uart
     wire        [NB_DATA                                               - 1 : 0] uart_rx_data_to_fifo_data               ;
     wire        [NB_OP_CODE                                            - 1 : 0] interface_to_alu_op_code                ;
 
-        /*
-    baud_rate_gen#(
-        .CLK_FREQ       (CLK_FREQ                                                                                       ),
-        .BAUD_RATE      (BAUD_RATE                                                                                      ),
-        .SM_TICK        (SM_TICK                                                                                        )
-    )
-    u_baud_rate_gen
+    baud_rate_gen #(
+        .NB_COUNTER (NB_COUNTER                                                                                         ),
+        .CLK_FREQ   (CLK_FREQ                                                                                           ),
+        .BAUD_RATE  (BAUD_RATE                                                                                          ),
+        .SM_TICK    (SM_TICK                                                                                            )
+    ) 
+    u_baud_rate_gen 
     (
-        .o_baud_tick    (counter_tick_to_uart                                                                           ),  
-        .i_rst          (i_rst                                                                                          ),  
-        .clock          (clock                                                                                          )   
-    )                                                                                                                   ;
-*/
-
-counter
-    #(
-    )
-        u_counter
-        (
-            .o_counter (                    ),  //! Counter status output (not used)
-            .o_tick    (counter_tick_to_uart),  //! Output tick
-            .i_rst     (i_rst               ),  //! Reset
-            .clock       (clock                 )   //! Clock
-        );
-
+        .o_counter  (                                                                                                   ),
+        .o_tick     (counter_tick_to_uart                                                                               ),
+        .i_rst      (i_rst                                                                                              ),
+        .clock      (clock                                                                                              )
+    );
 
     alu#(
         .NB_DATA        (NB_REG                                                                                         ),
@@ -79,12 +70,12 @@ counter
         .NB_OP_CODE     (NB_OP_CODE                                                                                     ),
         .NB_COUNT       (NB_COUNT                                                                                       )
     )
-
     u_interface_uart
     (
         .o_tx_start     (interface_to_tx_start                                                                          ),  
         .o_read         (interface_to_fifo_rx_rd                                                                        ),  
-        .o_write        (interface_to_fifo_tx_wr                                                                        ),  
+        .o_write        (interface_to_fifo_tx_wr                                                                        ),
+        .o_fifo_tx_rd   (interface_to_fifo_tx_rd                                                                        ),
         .o_alu_out      (interface_to_fifo_tx_data                                                                      ),  
         .o_alu_data_a   (interface_to_alu_data_a                                                                        ),  
         .o_alu_data_b   (interface_to_alu_data_b                                                                        ),  
@@ -92,7 +83,8 @@ counter
         .i_alu_out      (alu_out_to_interface                                                                           ),  
         .i_rx_data      (fifo_rx_data_to_interface                                                                      ),  
         .i_rx_done      (uart_rx_done_to_fifo_wr                                                                        ),  
-        .i_rx_empty     (fifo_rx_empty_to_interface                                                                     ),  
+        .i_rx_empty     (fifo_rx_empty_to_interface                                                                     ),
+        .i_fifo_tx_empty(fifo_tx_empty_to_interface                                                                     ), // ← NUEVO
         .i_tx_done      (uart_tx_done_to_interface                                                                      ),  
         .i_rst          (i_rst                                                                                          ),  
         .clock          (clock                                                                                          )   
@@ -123,16 +115,14 @@ counter
     u_fifo_tx    
     (   
         .o_data         (fifo_tx_data_to_uart_tx                                                                        ),  
-        .o_empty_flag   (fifo_tx_empty_to_led                                                                           ), 
+        .o_empty_flag   (fifo_tx_empty_to_interface                                                                     ), 
         .o_full_flag    (                                                                                               ), 
-        .i_rd           (interface_to_tx_start                                                                          ), 
+        .i_rd           (interface_to_fifo_tx_rd                                                                        ),
         .i_wr           (interface_to_fifo_tx_wr                                                                        ), 
         .i_data         (interface_to_fifo_tx_data                                                                      ),
         .i_rst          (i_rst                                                                                          ),  
         .clock          (clock                                                                                          )   
     )                                                                                                                   ;    
-
-//----------------------------------------- UART INSTANCES --------------------------------------------//
 
     uart_rx#( 
         .NB_DATA        (NB_DATA                                                                                        ),

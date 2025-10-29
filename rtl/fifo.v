@@ -114,7 +114,7 @@ module fifo
         end
     end
 
-    assign wr_en  = i_wr & ~full_flag                                                                          ;
+    assign wr_en  = i_wr & ~full_flag                                                                           ;
 
     always @(posedge clock or posedge i_rst) 
     begin

@@ -95,7 +95,7 @@ module interface_uart
                 if (rx_done_reg)
                 begin
                     read_reg            = 1'b1                                                                  ;
-                    alu_data_a_next     = {i_rx_data, alu_data_a_reg[NB_REG - 1 : NB_DATA]}                    ;
+                    alu_data_a_next     = {i_rx_data, alu_data_a_reg[NB_REG - 1 : NB_DATA]}                     ;
 
                     if (data_count_reg == NB_CNT - 1'b1)
                     begin
@@ -179,7 +179,7 @@ module interface_uart
                 else
                 begin
                     write_reg           = 1'b1                                                                  ;
-                    alu_out_data_reg    = alu_out_reg[(data_count_reg * NB_DATA) +: NB_DATA]                   ;
+                    alu_out_data_reg    = alu_out_reg[(data_count_reg * NB_DATA) +: NB_DATA]                    ;
                     data_count_next     = data_count_reg + 1'b1                                                 ;
                 end
             end

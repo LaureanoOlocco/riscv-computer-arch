@@ -84,7 +84,7 @@ module top_uart
         .i_rx_data      (fifo_rx_data_to_interface                                                                      ),  
         .i_rx_done      (uart_rx_done_to_fifo_wr                                                                        ),  
         .i_rx_empty     (fifo_rx_empty_to_interface                                                                     ),
-        .i_fifo_tx_empty(fifo_tx_empty_to_interface                                                                     ), // ← NUEVO
+        .i_fifo_tx_empty(fifo_tx_empty_to_interface                                                                     ),
         .i_tx_done      (uart_tx_done_to_interface                                                                      ),  
         .i_rst          (i_rst                                                                                          ),  
         .clock          (clock                                                                                          )   

@@ -158,7 +158,6 @@ module uart_rx
         end
      end
        
-     // salida
      assign o_data          = bits_reg                                                                          ;  
      assign o_rx_done_tick  = rx_done_tick                                                                      ;
      

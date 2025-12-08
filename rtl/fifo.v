@@ -37,13 +37,16 @@ module fifo
     wire                                                                        wr_en                           ;
     integer                                                                     ptr                             ;
 
-    always @(posedge clock or posedge i_rst) begin
-    if (i_rst) begin
+    always @(posedge clock or posedge i_rst) 
+    begin
+    if (i_rst)
+     begin
         data_out_reg <= {NB_DATA{1'b0}};
-    end else if (i_rd && ~empty_flag) begin
-        // Capturá el dato que vas a leer (antes de mover rd_ptr)
-        data_out_reg <= fifo_buffer[rd_ptr];
-    end
+    end 
+    else if (i_rd && ~empty_flag) 
+        begin
+         data_out_reg <= fifo_buffer[rd_ptr];
+        end
     end
 
 
@@ -62,7 +65,6 @@ module fifo
                   wr_ptr_next   = wr_ptr                                                                        ;
                   rd_ptr_next   = rd_ptr + {{NB_ADDRESS - 1 {1'b0}}, 1'b1}                                      ;
                   full_next     = 1'b0                                                                          ;
-                  // Check if will be empty after read
                   if ((rd_ptr + {{NB_ADDRESS - 1 {1'b0}}, 1'b1}) == wr_ptr)
                   begin
                       empty_next = 1'b1                                                                         ;                        
@@ -76,7 +78,6 @@ module fifo
                   wr_ptr_next   = wr_ptr + {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                     ;
                   rd_ptr_next   = rd_ptr                                                                        ;
                   empty_next    = 1'b0                                                                          ;
-                  // Check if will be full after write
                   if ((wr_ptr + {{(NB_ADDRESS - 1){1'b0}}, 1'b1}) == rd_ptr)
                   begin
                       full_next = 1'b1                                                                          ;
@@ -85,7 +86,7 @@ module fifo
           end
           STATE_RW: 
           begin 
-              if (~empty_flag)  // Can read
+              if (~empty_flag) 
               begin
                   wr_ptr_next       = wr_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                ;
                   rd_ptr_next       = rd_ptr +  {{(NB_ADDRESS - 1){1'b0}}, 1'b1}                                ;

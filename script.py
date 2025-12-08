@@ -24,7 +24,7 @@ OPCODES = {
 
 def print_help():
     print("\n" + "="*60)
-    print(" Interfaz UART ↔️ ALU")
+    print(" Interfaz UART <-> ALU")
     print("="*60)
     print(f"START: 0x{START_CHAR:02X}   END: 0x{END_CHAR:02X}   ERROR: 0x{ERROR_CHAR:02X}")
     print(f"Baudrate: {BAUDRATE}")
@@ -52,13 +52,13 @@ def select_serial_port():
     # Si hay uno solo, lo tomamos directo
     if len(ports) == 1:
         chosen = ports[0][1]
-        print(f"✓ Usando puerto único: {chosen}")
+        print(f"Usando puerto único: {chosen}")
         return chosen
 
     try:
         sel = int(input("Elegí el número de puerto: ").strip())
         if 0 <= sel < len(ports):
-            print(f"✓ Puerto seleccionado: {ports[sel][1]}")
+            print(f"Puerto seleccionado: {ports[sel][1]}")
             return ports[sel][1]
         else:
             print("Índice fuera de rango.")
@@ -68,7 +68,6 @@ def select_serial_port():
         return None
 
 def parse_hex32(s):
-    """Parsea un string hex a entero de 32 bits sin signo."""
     s = s.strip().lower().replace("_", "")
     if s.startswith("0x"):
         s = s[2:]
@@ -81,12 +80,11 @@ def parse_hex32(s):
 
 class SerialPortControl:
     def __init__(self, port):
-        # ↑ timeout ampliado a 5 s para dar margen a la FSM
         self.serial_port = serial.Serial(port, BAUDRATE, timeout=5)
-        time.sleep(2)  # Asentamiento del puerto
+        time.sleep(2)  
         self.serial_port.reset_input_buffer()
         self.serial_port.reset_output_buffer()
-        print(f"✓ Abierto {port} @ {BAUDRATE} baud")
+        print(f" Abierto {port} @ {BAUDRATE} baud")
 
     def close(self):
         if self.serial_port and self.serial_port.is_open:
@@ -94,13 +92,12 @@ class SerialPortControl:
             print("Puerto serie cerrado.")
 
     def _read_exactly(self, nbytes: int) -> bytes:
-        """Lee exactamente nbytes o menos si se agota el timeout."""
         remaining = nbytes
         buf = bytearray()
         while remaining > 0:
             chunk = self.serial_port.read(remaining)
             if not chunk:
-                break  # timeout del puerto
+                break  
             buf.extend(chunk)
             remaining -= len(chunk)
         return bytes(buf)
@@ -114,7 +111,6 @@ class SerialPortControl:
         b = parse_hex32(b_hex)
         opcode = OPCODES[op]
 
-        # Construir paquete
         pkt = bytearray()
         pkt.append(START_CHAR)
         pkt.extend(a.to_bytes(4, "little"))
@@ -122,7 +118,6 @@ class SerialPortControl:
         pkt.append(opcode)
         pkt.append(END_CHAR)
 
-        # Mostrar paquete
         print("\n--- Enviando ---")
         print(f"START:   0x{START_CHAR:02X}")
         print(f"A:       0x{a:08X} -> {' '.join(f'{bb:02X}' for bb in a.to_bytes(4,'little'))}")
@@ -132,22 +127,20 @@ class SerialPortControl:
         print(f"Total:   {len(pkt)} bytes")
         print(f"RAW:     {' '.join(f'{bb:02X}' for bb in pkt)}")
 
-        # Enviar
         self.serial_port.reset_input_buffer()
         self.serial_port.reset_output_buffer()
         written = self.serial_port.write(pkt)
         self.serial_port.flush()
-        print(f"→ Enviados {written} bytes. Esperando respuesta...")
+        print(f" Enviados {written} bytes. Esperando respuesta...")
 
-        # Leer exactamente 4 bytes
         rx = self._read_exactly(4)
 
         if len(rx) == 0:
-            print("✗ Timeout: no se recibieron datos.")
+            print("Timeout: no se recibieron datos.")
             return None
 
         if len(rx) != 4:
-            print(f"✗ Error de recepción: se esperaban 4 bytes y llegaron {len(rx)}.")
+            print(f"Error de recepción: se esperaban 4 bytes y llegaron {len(rx)}.")
             print(f"RX: {' '.join(f'{bb:02X}' for bb in rx)}")
             return None
 

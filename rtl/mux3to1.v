@@ -39,6 +39,7 @@ module mux_3to1
 //------------------------------------- Combinational Circuit ------------------------------------// 
   always @(*) 
   begin
+    output_mux     = {NB_MUX{1'b0}}                                                                 ;
     case (i_data_sel)
       DATA_A                                                                                        : 
       begin
@@ -51,10 +52,6 @@ module mux_3to1
       DATA_C                                                                                        :
       begin
         output_mux = i_data_c                                                                       ; 
-      end
-      default                                                                                       :
-      begin
-        output_mux = {NB_MUX{1'b0}}                                                                 ;
       end
     endcase
   end

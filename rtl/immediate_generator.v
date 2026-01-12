@@ -49,7 +49,7 @@ module imm_gen
   always @(*) 
   begin
     case (i_instruction[NB_OPCODE - 1 : 0])
-        R-TYPE                                                                                      :
+        R_TYPE                                                                                      :
         begin
           // R-Type Instructions do not have an immediate value
           output_immediate = {NB_DATA{1'b0}}                                                        ; 

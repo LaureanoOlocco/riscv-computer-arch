@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
- // Project     : RISC-V Computer Architecture
- // Module name : block_ram.v
+// Project     : RISC-V Computer Architecture
+// Module name : block_ram.v
 // Date        : 2025-12-08
 // Author      : Sofía Avalos - Laureano Olocco
 // Description : Parameterizable Block RAM module.

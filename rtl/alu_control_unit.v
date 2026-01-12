@@ -30,18 +30,52 @@ module alu_ctrl_unit
 )                                                                                                   ;                                                                                       
 
 //---------------------------------------- Local Params ------------------------------------------//
-  localparam                                                    ADD_OP      = 6'b100000             ;   
-  localparam                                                    SUB_OP      = 6'b100010             ;
-  localparam                                                    AND_OP      = 6'b100100             ;
-  localparam                                                    OR_OP       = 6'b100101             ;
-  localparam                                                    XOR_OP      = 6'b100110             ;
-  localparam                                                    SRA_OP      = 6'b000011             ;
-  localparam                                                    SRL_OP      = 6'b000010             ;
-  localparam                                                    NOR_OP      = 6'b100111             ;
+//----> ALU operation codes
+  localparam                                                    ADD_OP            = 6'b100000       ;   
+  localparam                                                    SUB_OP            = 6'b100010       ;
+  localparam                                                    AND_OP            = 6'b100100       ;
+  localparam                                                    OR_OP             = 6'b100101       ;
+  localparam                                                    XOR_OP            = 6'b100110       ;
+  localparam                                                    SRA_OP            = 6'b000011       ;
+  localparam                                                    SRL_OP            = 6'b000010       ;
+  localparam                                                    NOR_OP            = 6'b100111       ;
+  localparam                                                    SLL_OP            = 6'b000000       ;
+  localparam                                                    SLT_OP            = 6'b000100       ;
+  localparam                                                    SLTU_OP           = 6'b000101       ;
 
-  localparam                                                    LD_ST_INSTR = 2'b00                 ;
-  localparam                                                    BEQ_INSTR   = 2'b01                 ;
-  localparam                                                    R_TYPE_INSTR= 2'b10                 ;
+//----> ALU Operations
+  localparam                                                    LD_ST_INSTR       = 2'b00           ;
+  localparam                                                    BEQ_INSTR         = 2'b01           ;
+  localparam                                                    R_TYPE_INSTR      = 2'b10           ;
+  localparam                                                    I_TYPE_INSTR      = 2'b10           ;
+
+//----> R-Type funct3 codes
+  localparam                                                    FUNCT3R_ADD_SUB   = 3'b000          ;
+  localparam                                                    FUNCT3R_SLL       = 3'b001          ;
+  localparam                                                    FUNCT3R_SLT       = 3'b010          ;
+  localparam                                                    FUNCT3R_SLTU      = 3'b011          ;
+  localparam                                                    FUNCT3R_XOR       = 3'b100          ;
+  localparam                                                    FUNCT3R_SRL_SRA   = 3'b101          ;
+  localparam                                                    FUNCT3R_OR        = 3'b110          ;
+  localparam                                                    FUNCT3R_AND       = 3'b111          ;
+
+//----> R-Type funct7 codes
+  localparam                                                    FUNCT7R_ADD_SRL   = 7'b0000000      ;
+  localparam                                                    FUNCT7R_SUB_SRA   = 7'b0100000      ;
+
+//----> I-Type funct3 codes
+  localparam                                                    FUNCT3I_ADDI      = 3'b000          ;
+  localparam                                                    FUNCT3I_SLTI      = 3'b010          ;
+  localparam                                                    FUNCT3I_SLTIU     = 3'b011          ;
+  localparam                                                    FUNCT3I_XORI      = 3'b100          ;
+  localparam                                                    FUNCT3I_ORI       = 3'b110          ;
+  localparam                                                    FUNCT3I_ANDI      = 3'b111          ;
+  localparam                                                    FUNCT3I_SLLI      = 3'b001          ;
+  localparam                                                    FUNCT3I_SRLI_SRAI = 3'b101          ;
+
+//----> I-Type funct7 codes
+  localparam                                                    FUNCT7I_SRLI      = 7'b0000000      ;
+  localparam                                                    FUNCT7I_SRAI      = 7'b0100000      ;
 
 //--------------------------------------- Internal Signals ---------------------------------------//
   reg       [NB_OP_CODE                               - 1 : 0] output_alu_op                        ;
@@ -49,6 +83,7 @@ module alu_ctrl_unit
 //----------------------------------- Calculate the ALU Operation --------------------------------//  
   always @(*) 
   begin
+    output_alu_op     = ADD_OP                                                                      ; // Default operation
     case (i_alu_op)
       LD_ST_INSTR                                                                                   : 
       begin 
@@ -60,22 +95,34 @@ module alu_ctrl_unit
       end
       R_TYPE_INSTR                                                                                  : 
       begin // R-Type Instructions
-          case ({i_funct7, i_funct3})
-              10'b0000000000 : o_alu_op = ALU_ADD   ;
-              10'b0100000000 : o_alu_op = ALU_SUB   ;
-              10'b0000000100 : o_alu_op = ALU_XOR   ;
-              10'b0000000110 : o_alu_op = ALU_OR    ;
-              10'b0000000111 : o_alu_op = ALU_AND   ;
-              10'b0000000001 : o_alu_op = ALU_SLL   ;
-              10'b0000000101 : o_alu_op = ALU_SRL   ;
-              10'b0100000101 : o_alu_op = ALU_SRA   ;
-              10'b0000000010 : o_alu_op = ALU_SLT   ;
-              10'b0000000011 : o_alu_op = ALU_SLTU  ;
-              default        : o_alu_op = ALU_ADD   ;
-          endcase
+        case (i_funct3)
+           FUNCT3R_ADD_SUB : output_alu_op = (i_funct7 == FUNCT7R_ADD_SRL) ? ADD_OP : SUB_OP        ;
+           FUNCT3R_SLL     : output_alu_op = SLL_OP                                                 ;
+           FUNCT3R_SLT     : output_alu_op = SLT_OP                                                 ;  
+           FUNCT3R_SLTU    : output_alu_op = SLTU_OP                                                ;
+           FUNCT3R_XOR     : output_alu_op = XOR_OP                                                 ;
+           FUNCT3R_SRL_SRA : output_alu_op = (i_funct7 == FUNCT7R_ADD_SRL) ? SRL_OP : SRA_OP        ;
+           FUNCT3R_OR      : output_alu_op = OR_OP                                                  ;
+           FUNCT3R_AND     : output_alu_op = AND_OP                                                 ;
+        endcase
       end
-      default: o_alu_op = ALU_ADD;
+      I_TYPE_INSTR                                                                                  :
+      begin // I-Type Instructions
+        case (i_funct3)
+          FUNCT3I_ADDI      : output_alu_op = ADD_OP                                                ;
+          FUNCT3I_SLTI      : output_alu_op = SLT_OP                                                ;
+          FUNCT3I_SLTIU     : output_alu_op = SLTU_OP                                               ;
+          FUNCT3I_XORI      : output_alu_op = XOR_OP                                                ;
+          FUNCT3I_ORI       : output_alu_op = OR_OP                                                 ;
+          FUNCT3I_ANDI      : output_alu_op = AND_OP                                                ;
+          FUNCT3I_SLLI      : output_alu_op = SLL_OP                                                ;
+          FUNCT3I_SRLI_SRAI : output_alu_op = (i_funct7 == FUNCT7I_SRLI) ? SRL_OP : SRA_OP          ;
+        endcase
+      end
     endcase
   end
+
+//-------------------------------------------- Outputs -------------------------------------------//
+  assign o_alu_op_code = output_alu_op                                                               ;
 
 endmodule

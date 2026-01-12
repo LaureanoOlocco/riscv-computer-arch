@@ -11,10 +11,10 @@
 `default nettype none
 
 module alu_ctrl_unit
-(
+#(
 //----------------------------------------- PARAMETERS --------------------------------------------//
   parameter                                                     NB_ALU_OP     = 2                   ,
-  parameter                                                     NB_OP_CODE    = 6                   , 
+  parameter                                                     NB_OP_CODE    = 6                   ,
   parameter                                                     NB_FUNCT7     = 7                   ,
   parameter                                                     NB_FUNCT3     = 3
 )
@@ -47,7 +47,7 @@ module alu_ctrl_unit
   localparam                                                    LD_ST_INSTR       = 2'b00           ;
   localparam                                                    BEQ_INSTR         = 2'b01           ;
   localparam                                                    R_TYPE_INSTR      = 2'b10           ;
-  localparam                                                    I_TYPE_INSTR      = 2'b10           ;
+  localparam                                                    I_TYPE_INSTR      = 2'b11           ;
 
 //----> R-Type funct3 codes
   localparam                                                    FUNCT3R_ADD_SUB   = 3'b000          ;

@@ -24,9 +24,9 @@ module alu_ctrl_unit
   output wire [NB_ALU_OP                              - 1 : 0]  o_alu_op_code                       ,  
 //------------------------------------------- INPUTS ---------------------------------------------//                         
   // ALU Control Unit Input Ports                   
-  input  wire [NB_ALU_OP                              - 1 : 0] i_alu_op                             ,  
-  input  wire [NB_FUNCT7                              - 1 : 0] i_funct7                             ,  
-  input  wire [NB_FUNCT3                              - 1 : 0] i_funct3                                
+  input  wire [NB_ALU_OP                              - 1 : 0]  i_alu_op                            ,  
+  input  wire [NB_FUNCT7                              - 1 : 0]  i_funct7                            ,  
+  input  wire [NB_FUNCT3                              - 1 : 0]  i_funct3                               
 )                                                                                                   ;                                                                                       
 
 //---------------------------------------- Local Params ------------------------------------------//

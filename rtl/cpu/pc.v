@@ -1,3 +1,14 @@
+//--------------------------------------------------------------------------------------------------
+// Project     : RISC-V Computer Architecture
+// Module name : mux4to1.v
+// Date        : 2025-12-08
+// Author      : Sofía Avalos - Laureano Olocco
+// Description : Program Counter (PC) module for a RISC-V processor. 
+//               This module holds the current value of the program counter and updates it based on 
+//               the input control signals. It supports synchronous reset and write enable functionality 
+//               to allow for proper PC updates during instruction fetch and branch/jump operations.
+//--------------------------------------------------------------------------------------------------
+
 `default nettype none
 
 module pc

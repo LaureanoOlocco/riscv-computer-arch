@@ -33,7 +33,8 @@ module base_integer_ctrl_unit
   localparam                                                    J_TYPE            = 7'b1101111      ; // OpCode for J-type instructions (e.g., jal)
   localparam                                                    S_TYPE            = 7'b0100011      ; // OpCode for S-type instructions (e.g., sw, sh, sb)
   localparam                                                    B_TYPE            = 7'b1100011      ; // OpCode for B-type instructions (e.g., beq, bne, etc.)
-  localparam                                                    U_TYPE            = 7'b0110111      ; // OpCode for U-type instructions (e.g., lui)
+  localparam                                                    U_TYPE_1          = 7'b0110111      ; // OpCode for LUI instruction
+  localparam                                                    U_TYPE_2          = 7'b0010111      ; // OpCode for AUIPC instruction
 
   localparam                                                    REG_WRITE_INDEX   = 0               ; 
   localparam                                                    MEM_READ_INDEX    = 1               ;
@@ -96,7 +97,22 @@ module base_integer_ctrl_unit
       U_TYPE_1, U_TYPE_2                                                                            : 
       begin
         ctrl_out[REG_WRITE_INDEX                ] = 1'b1                                            ; // Enable register write for U-type instructions (e.g., lui, auipc)
-        ctrl_out[ALU_SRC_INDEX                  ] = 1'b1                                            ; // Enable register write for U-type instructions (e.g., lui, auipc)
+        ctrl_out[ALU_SRC_INDEX                  ] = 1'b1                                            ; // Select immediate value as ALU source
+      end
+      J_TYPE                                                                                        :
+      begin
+        // JAL: resolved in ID (branch adder computes PC+imm, jump_ctrl_unit handles flush).
+        // WB still needed: rd = PC+4 (passed through pipeline as ALU result via alu_src=0).
+        ctrl_out[REG_WRITE_INDEX                ] = 1'b1                                            ; // Enable register write (rd = PC+4)
+        ctrl_out[ALU_OP_INDEX + 1 : ALU_OP_INDEX] = 2'b00                                           ; // ALU passthrough (not used; wb_result comes from forwarded PC+4)
+      end
+      I_TYPE_3                                                                                      :
+      begin
+        // JALR: resolved in ID (rs1_fwd+imm target, jump_ctrl_unit handles flush).
+        // WB still needed: rd = PC+4.
+        ctrl_out[REG_WRITE_INDEX                ] = 1'b1                                            ; // Enable register write (rd = PC+4)
+        ctrl_out[ALU_SRC_INDEX                  ] = 1'b1                                            ; // ALU src = immediate (not critical; resolved in ID)
+        ctrl_out[ALU_OP_INDEX + 1 : ALU_OP_INDEX] = 2'b00                                           ; // ALU passthrough
       end
       default                                                                                       : 
       begin

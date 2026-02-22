@@ -18,8 +18,7 @@ module if_id_reg
   parameter                                                     NB_OP_CODE    = 6                   ,
   parameter                                                     NB_ADDR       = $clog2(NB_INSTR)    ,
   parameter                                                     NB_FUNC3      = 3                   ,
-  parameter                                                     NB_FUNC7      = 7                   ,
-  
+  parameter                                                     NB_FUNC7      = 7                   
 ) 
 (
 //------------------------------------------ OUTPUTS PORTS ----------------------------------------//

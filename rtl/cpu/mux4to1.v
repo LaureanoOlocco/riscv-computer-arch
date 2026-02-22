@@ -13,7 +13,7 @@
 module mux_4to1
 #(
 //----------------------------------------- PARAMETERS --------------------------------------------//
-  parameter                                                     NB_MUX        = 32                
+  parameter                                                     NB_MUX        = 32                  ,
   parameter                                                     NB_SELECT     = 2     
 ) 
 (
@@ -36,7 +36,7 @@ module mux_4to1
   localparam                                                    DATA_D        = 2'b11               ;
 
 //--------------------------------------- Internal Signals ---------------------------------------// 
-  reg                                                           output_mux                          ;
+  reg       [NB_MUX                                   - 1 : 0]  output_mux                          ;
 
 //------------------------------------- Combinational Circuit ------------------------------------// 
   always @(*) 

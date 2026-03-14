@@ -46,7 +46,7 @@ module id_ex_reg
   input wire [NB_DATA                                 - 1 : 0]  i_rs2_data                          , 
   input wire [NB_DATA                                 - 1 : 0]  i_immediate                         , 
   input wire [NB_ADDR                                 - 1 : 0]  i_rd_addr                           ,
-  input wire [NB_FUNC                                 - 1 : 0]  i_func3                             ,
+  input wire [NB_FUNC3                                - 1 : 0]  i_func3                             ,
   input wire [NB_ADDR                                 - 1 : 0]  i_rs1_addr                          ,
   input wire [NB_ADDR                                 - 1 : 0]  i_rs2_addr                          ,
   input wire [NB_FUNC7                                - 1 : 0]  i_func7                             ,

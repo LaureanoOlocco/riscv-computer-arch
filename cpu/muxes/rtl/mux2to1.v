@@ -31,7 +31,7 @@ module mux_2to1
   localparam                                                    DATA_B        = 1'b1                ;
 
 //--------------------------------------- Internal Signals ---------------------------------------// 
-  reg                                                           output_mux                          ;
+  reg       [NB_MUX                                   - 1 : 0]  output_mux                          ;
 
 //------------------------------------- Combinational Circuit ------------------------------------// 
   always @(*) 

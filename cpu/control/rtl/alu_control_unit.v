@@ -21,7 +21,7 @@ module alu_ctrl_unit
 (
 //------------------------------------------ OUTPUTS --------------------------------------------//
   // ALU Control Unit Output Ports
-  output wire [NB_ALU_OP                              - 1 : 0]  o_alu_op_code                       ,  
+  output wire [NB_OP_CODE                             - 1 : 0]  o_alu_op_code                       ,  
 //------------------------------------------- INPUTS ---------------------------------------------//                         
   // ALU Control Unit Input Ports                   
   input  wire [NB_ALU_OP                              - 1 : 0]  i_alu_op                            ,  

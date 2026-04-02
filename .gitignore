@@ -9,9 +9,6 @@ build/
 interfaz.py
 script.py
 
-# FPGA board project files
-boards/
-
 # Images
 img/
 

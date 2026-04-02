@@ -7,7 +7,7 @@
 //               register data, immediate values, and instruction fields at the end of the Instruction Decode stage 
 //               and provides them to the Execute stage. It also handles control signals for flushing and enabling the pipeline.
 //--------------------------------------------------------------------------------------------------
-´default nettype none
+`default_nettype none
 
 module id_ex_reg
 #(

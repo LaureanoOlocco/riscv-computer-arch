@@ -8,7 +8,7 @@
 //                - Parameterizable select width via NB_SELECT (default: 2).
 //--------------------------------------------------------------------------------------------------
 
-`default nettype none
+`default_nettype none
 
 module mux_3to1
 #(

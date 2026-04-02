@@ -23,7 +23,7 @@
 //                allocating codes in i_op and extending the combinational case, alongside testbench checks.
 
 //--------------------------------------------------------------------------------------------------
-`default nettype none
+`default_nettype none
 
 module alu 
 #(

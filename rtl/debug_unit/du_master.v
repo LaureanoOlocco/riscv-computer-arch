@@ -38,6 +38,7 @@ module du_master
     output reg                         o_resp_valid        ,  // Response valid pulse
     output reg [NB_UART_DATA - 1 : 0]  o_resp_status       ,  // Response status byte
     output reg [NB_DATA - 1 : 0]       o_resp_data         ,  // Response data
+    
     input wire                         i_imem_loader_done  ,  // du_imem_loader done
     input wire                         i_regfile_tx_done   ,  // du_regfile_tx done
     input wire                         i_dmem_tx_done      ,  // du_dmem_tx done

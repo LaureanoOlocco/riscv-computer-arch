@@ -15,10 +15,10 @@ module du_regfile_rx
     parameter NB_UART_DATA = 8    // NB of UART data
 ) (
     // Outputs
-    output reg                    o_done         ,  // Write done signal
-    output reg                    o_regfile_wr   ,  // Register file write enable
-    output     [4 : 0]           o_regfile_waddr,  // Register file write address
-    output     [NB_DATA - 1 : 0] o_regfile_wdata,  // Register file write data
+    output wire                    o_done         ,  // Write done signal
+    output wire                    o_regfile_wr   ,  // Register file write enable
+    output wire [4 : 0]           o_regfile_waddr,  // Register file write address
+    output wire [NB_DATA - 1 : 0] o_regfile_wdata,  // Register file write data
 
     // Inputs
     input wire                    i_start        ,  // Start signal from master
@@ -50,9 +50,14 @@ module du_regfile_rx
     // Latched write address
     reg [4 : 0] addr_reg, addr_next;
 
+    reg done_out;
+    reg regfile_wr_out;
+
     // Output Assignments
     assign o_regfile_waddr = addr_reg;
     assign o_regfile_wdata = word_reg;
+    assign o_regfile_wr    = regfile_wr_out;
+    assign o_done          = done_out;
 
     // Sequential Logic
     always @(posedge clk) begin
@@ -98,8 +103,8 @@ module du_regfile_rx
     // State Logic
     always @(*) begin
         // Defaults
-        o_done        = 1'b0;
-        o_regfile_wr  = 1'b0;
+        done_out        = 1'b0;
+        regfile_wr_out  = 1'b0;
         word_next     = word_reg;
         byte_cnt_next = byte_cnt_reg;
         addr_next     = addr_reg;
@@ -126,8 +131,8 @@ module du_regfile_rx
             end
 
             WRITE_REG: begin
-                o_regfile_wr = 1'b1;
-                o_done       = 1'b1;
+                regfile_wr_out = 1'b1;
+                done_out       = 1'b1;
             end
 
             default: begin

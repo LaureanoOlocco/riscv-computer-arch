@@ -16,12 +16,12 @@ module du_dmem_tx
     parameter NB_UART_DATA = 8    // NB of UART data
 ) (
     // Outputs
-    output reg                        o_done      ,  // Transfer done signal
-    output reg                        o_tx_start  ,  // UART Tx start output
-    output reg                        o_wr        ,  // UART FIFO Tx write enable output
-    output reg [NB_UART_DATA - 1 : 0] o_wdata     ,  // UART FIFO Tx write data
-    output reg                        o_mem_rd    ,  // Memory read enable output
-    output     [NB_ADDR - 1 : 0]      o_mem_raddr ,  // Memory read address output
+    output wire                        o_done      ,  // Transfer done signal
+    output wire                        o_tx_start  ,  // UART Tx start output
+    output wire                        o_wr        ,  // UART FIFO Tx write enable output
+    output wire [NB_UART_DATA - 1 : 0] o_wdata     ,  // UART FIFO Tx write data
+    output wire                        o_mem_rd    ,  // Memory read enable output
+    output wire [NB_ADDR      - 1 : 0] o_mem_raddr ,  // Memory read address output
 
     // Inputs
     input wire                        i_start     ,  // Start signal from master
@@ -57,9 +57,19 @@ module du_dmem_tx
     reg [NB_COUNTER - 1 : 0] counter_reg ;
     reg [NB_COUNTER - 1 : 0] counter_next;
 
+    reg                        done_out      ; // Transfer done signal
+    reg                        tx_start_out  ; // UART Tx start output
+    reg                        wr_out        ; // UART FIFO Tx write enable output
+    reg [NB_UART_DATA - 1 : 0] wdata_out     ; // UART FIFO Tx write data
+    reg                        mem_rd_out    ; // Memory read enable output
+
     // Read Address Output Logic
     assign o_mem_raddr = mem_addr_reg;
-
+    assign o_done      = done_out;
+    assign o_tx_start  = tx_start_out;
+    assign o_wr        = wr_out;
+    assign o_wdata     = wdata_out;
+    assign o_mem_rd    = mem_rd_out;
 
     // FSMD states and data registers
     always @(posedge clk) begin
@@ -113,11 +123,11 @@ module du_dmem_tx
     // State Logic
     always @(*) begin
         // Default values
-        o_done        = 1'b0;
-        o_mem_rd      = 1'b0;
-        o_tx_start    = 1'b0;
-        o_wr          = 1'b0;
-        o_wdata       = 8'h00;
+        done_out      = 1'b0;
+        tx_start_out  = 1'b0;
+        wr_out        = 1'b0;
+        wdata_out     = 8'h00;
+        mem_rd_out    = 1'b0;
         rx_data_next  = rx_data_reg;
         mem_addr_next = mem_addr_reg;
         counter_next  = counter_reg;
@@ -125,7 +135,7 @@ module du_dmem_tx
         case (state_reg)
             READ_MEM: begin
                 if (counter_reg == 3'b000) begin
-                    o_mem_rd      = 1'b1;
+                    mem_rd_out      = 1'b1;
                     mem_addr_next = mem_addr_reg + 1'b1;
                 end
 
@@ -144,47 +154,47 @@ module du_dmem_tx
                     end
 
                     if (mem_addr_reg == {NB_ADDR{1'b0}}) begin
-                        o_done = 1'b1;
+                        done_out = 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b000) begin
-                    o_wdata      = rx_data_reg[7 : 0];
-                    o_wr         = 1'b1;
-                    o_tx_start   = 1'b1;
+                    wdata_out      = rx_data_reg[7 : 0];
+                    wr_out         = 1'b1;
+                    tx_start_out   = 1'b1;
                     counter_next = counter_reg + 1'b1;
                 end
                 else if (counter_reg == 3'b001) begin
                     if (i_tx_done) begin
-                        o_wdata      = rx_data_reg[15 : 8];
-                        o_wr         = 1'b1;
-                        o_tx_start   = 1'b1;
+                        wdata_out      = rx_data_reg[15 : 8];
+                        wr_out         = 1'b1;
+                        tx_start_out   = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b010) begin
                     if (i_tx_done) begin
-                        o_wdata      = rx_data_reg[23 : 16];
-                        o_wr         = 1'b1;
-                        o_tx_start   = 1'b1;
+                        wdata_out      = rx_data_reg[23 : 16];
+                        wr_out         = 1'b1;
+                        tx_start_out   = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b011) begin
                     if (i_tx_done) begin
-                        o_wdata      = rx_data_reg[31 : 24];
-                        o_wr         = 1'b1;
-                        o_tx_start   = 1'b1;
+                        wdata_out      = rx_data_reg[31 : 24];
+                        wr_out         = 1'b1;
+                        tx_start_out   = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
             end
 
             default: begin
-                o_done        = 1'b0;
-                o_mem_rd      = 1'b0;
-                o_tx_start    = 1'b0;
-                o_wr          = 1'b0;
-                o_wdata       = 8'h00;
+                done_out        = 1'b0;
+                mem_rd_out      = 1'b0;
+                tx_start_out    = 1'b0;
+                wr_out          = 1'b0;
+                wdata_out       = 8'h00;
                 rx_data_next  = rx_data_reg;
                 mem_addr_next = mem_addr_reg;
                 counter_next  = counter_reg;

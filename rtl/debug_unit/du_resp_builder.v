@@ -37,7 +37,7 @@ module du_resp_builder
     localparam [NB_STATE - 1 : 0] IDLE      = 3'b001;
     localparam [NB_STATE - 1 : 0] SEND_BYTE = 3'b010;
     localparam [NB_STATE - 1 : 0] WAIT_TX   = 3'b100;
-
+    
     // Internal Signals
     reg [NB_STATE - 1 : 0] state_reg, next_state;
 

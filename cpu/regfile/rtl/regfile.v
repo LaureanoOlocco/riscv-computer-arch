@@ -1,4 +1,4 @@
-`default nettype none
+`default_nettype none
 
 module regfile
 #(

@@ -16,10 +16,10 @@ module du_imem_loader
     parameter NB_UART_DATA = 8    // NB of UART data
 ) (
     // Outputs
-    output reg                        o_done      ,  // Load done signal
-    output reg                        o_mem_wr    ,  // Memory write enable output
-    output     [NB_ADDR - 1 : 0]      o_mem_waddr ,  // Memory write address output
-    output     [NB_DATA - 1 : 0]      o_mem_wdata ,  // Memory write data output
+    output wire                       o_done      ,  // Load done signal
+    output wire                       o_mem_wr    ,  // Memory write enable output
+    output wire [NB_ADDR - 1 : 0]     o_mem_waddr ,  // Memory write address output
+    output wire [NB_DATA - 1 : 0]     o_mem_wdata ,  // Memory write data output
 
     // Inputs
     input wire                        i_start     ,  // Start signal from master
@@ -60,10 +60,14 @@ module du_imem_loader
     reg [NB_DATA - 1 : 0] size_reg ;
     reg [NB_DATA - 1 : 0] size_next;
 
+    reg                   done_out      ;
+    reg                   mem_wr_out    ;
+
     // Output Assignments
     assign o_mem_waddr = mem_addr_reg;
     assign o_mem_wdata = word_reg;
-
+    assign o_done      = done_out;
+    assign o_mem_wr    = mem_wr_out;
 
     // FSMD states and data registers
     always @(posedge clk) begin
@@ -123,8 +127,8 @@ module du_imem_loader
     // State Logic
     always @(*) begin
         // Default values
-        o_done            = 1'b0;
-        o_mem_wr          = 1'b0;
+        done_out          = 1'b0;
+        mem_wr_out        = 1'b0;
         word_next         = word_reg;
         byte_counter_next = byte_counter_reg;
         mem_addr_next     = mem_addr_reg;
@@ -165,18 +169,18 @@ module du_imem_loader
             end
 
             WRITE_MEM: begin
-                o_mem_wr      = 1'b1;
+                mem_wr_out    = 1'b1;
                 mem_addr_next = mem_addr_reg + 1'b1;
                 word_next     = {NB_DATA{1'b0}};
 
                 if ((mem_addr_reg + 1'b1) == size_reg[NB_ADDR - 1 : 0]) begin
-                    o_done = 1'b1;
+                    done_out = 1'b1;
                 end
             end
 
             default: begin
-                o_done            = 1'b0;
-                o_mem_wr          = 1'b0;
+                done_out          = 1'b0;
+                mem_wr_out        = 1'b0;
                 word_next         = word_reg;
                 byte_counter_next = byte_counter_reg;
                 mem_addr_next     = mem_addr_reg;

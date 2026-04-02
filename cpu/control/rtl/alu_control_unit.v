@@ -8,7 +8,7 @@
 //                   and the funct7 and funct3 fields from the instruction.
 //                 - Outputs a 6-bit ALU operation code to control the ALU module.
 //--------------------------------------------------------------------------------------------------
-`default nettype none
+`default_nettype none
 
 module alu_ctrl_unit
 #(

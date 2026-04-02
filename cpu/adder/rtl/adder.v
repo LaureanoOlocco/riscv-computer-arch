@@ -8,7 +8,7 @@
 //                - Purely combinational design.
 //--------------------------------------------------------------------------------------------------
 
-`default nettype none
+`default_nettype none
 
 module adder
 #(

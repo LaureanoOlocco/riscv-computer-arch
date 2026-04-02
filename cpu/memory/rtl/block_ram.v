@@ -9,7 +9,7 @@
 //                - Synchronous write on clock's rising edge, asynchronous read on clock's falling edge.
 //--------------------------------------------------------------------------------------------------
 
-`default nettype none
+`default_nettype none
 
 module block_ram
 #(

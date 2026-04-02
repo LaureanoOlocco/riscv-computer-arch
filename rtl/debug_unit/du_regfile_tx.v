@@ -16,12 +16,12 @@ module du_regfile_tx
     parameter NB_UART_DATA = 8
 ) (
     // Outputs
-    output reg                        o_done         ,
-    output reg                        o_tx_start     ,  // UART Tx start output
-    output reg                        o_wr           ,  // UART FIFO Tx write enable output
-    output reg [NB_UART_DATA - 1 : 0] o_wdata        ,  // UART FIFO Tx write data
-    output reg                        o_regfile_rd   ,
-    output     [4 : 0]                o_regfile_raddr,
+    output wire                        o_done         ,
+    output wire                        o_tx_start     ,  // UART Tx start output
+    output wire                        o_wr           ,  // UART FIFO Tx write enable output
+    output wire [NB_UART_DATA - 1 : 0] o_wdata        ,  // UART FIFO Tx write data
+    output wire                        o_regfile_rd   ,
+    output wire [4 : 0]                o_regfile_raddr,
     
     // Inputs
     input wire                        i_start       ,
@@ -58,10 +58,20 @@ module du_regfile_tx
     // Word's bytes counter registers
     reg [NB_COUNTER - 1 : 0] counter_reg ;
     reg [NB_COUNTER - 1 : 0] counter_next;
-    
+
+   reg                        done_out;         
+   reg                        tx_start_out;     
+   reg                        wr_out;           
+   reg [NB_UART_DATA - 1 : 0] wdata_out;        
+   reg                        regfile_rd_out;   
+
     // Read Address Output Logic
     assign o_regfile_raddr = regfile_addr_reg;
-    
+    assign o_regfile_rd    = regfile_rd_out;
+    assign o_wdata         = wdata_out;
+    assign o_tx_start      = tx_start_out;
+    assign o_wr            = wr_out;
+    assign o_done          = done_out;
     
     // FSMD states and data registers
     always @(posedge clk) begin
@@ -121,11 +131,11 @@ module du_regfile_tx
     // State Logic
     always @(*) begin
         // Default values
-        o_done            = 1'b0;
-        o_regfile_rd      = 1'b0;
-        o_tx_start        = 1'b0;  
-        o_wr              = 1'b0;
-        o_wdata           = 8'h00;
+        done_out            = 1'b0;
+        regfile_rd_out      = 1'b0;
+        tx_start_out        = 1'b0;  
+        wr_out              = 1'b0;
+        wdata_out           = 8'h00;
         rx_data_next      = rx_data_reg;
         regfile_addr_next = regfile_addr_reg;
         counter_next = counter_reg;
@@ -138,32 +148,32 @@ module du_regfile_tx
                     end
                 end
                 else if (counter_reg == 3'b000) begin
-                    o_wdata      = i_pc[7 : 0];
-                    o_wr         = 1'b1;
-                    o_tx_start   = 1'b1;
+                    wdata_out      = i_pc[7 : 0];
+                    wr_out         = 1'b1;
+                    tx_start_out   = 1'b1;
                     counter_next = counter_reg + 1'b1;
                 end
                 else if (counter_reg == 3'b001) begin
                     if (i_tx_done) begin
-                        o_wdata           = i_pc[15 : 8];
-                        o_wr              = 1'b1;
-                        o_tx_start        = 1'b1;
+                        wdata_out           = i_pc[15 : 8];
+                        wr_out              = 1'b1;
+                        tx_start_out        = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b010) begin
                     if (i_tx_done) begin
-                        o_wdata           = i_pc[23 : 16];
-                        o_wr              = 1'b1;
-                        o_tx_start        = 1'b1;
+                        wdata_out           = i_pc[23 : 16];
+                        wr_out              = 1'b1;
+                        tx_start_out        = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b011) begin
                     if (i_tx_done) begin
-                        o_wdata           = i_pc[31 : 24];
-                        o_wr              = 1'b1;
-                        o_tx_start        = 1'b1;
+                        wdata_out           = i_pc[31 : 24];
+                        wr_out              = 1'b1;
+                        tx_start_out        = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
@@ -171,7 +181,7 @@ module du_regfile_tx
             
             READ_REG: begin
                 if (counter_reg == 3'b000) begin
-                    o_regfile_rd      = 1'b1;
+                    regfile_rd_out      = 1'b1;
                     regfile_addr_next = regfile_addr_reg + 1'b1;
                 end
                 
@@ -190,47 +200,47 @@ module du_regfile_tx
                     end
 
                     if (regfile_addr_reg == 5'd31) begin
-                        o_done = 1'b1;
+                        done_out = 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b000) begin
-                    o_wdata      = rx_data_reg[7 : 0];
-                    o_wr         = 1'b1;
-                    o_tx_start   = 1'b1;
+                    wdata_out      = rx_data_reg[7 : 0];
+                    wr_out         = 1'b1;
+                    tx_start_out   = 1'b1;
                     counter_next = counter_reg + 1'b1;
                 end
                 else if (counter_reg == 3'b001) begin
                     if (i_tx_done) begin
-                        o_wdata      = rx_data_reg[15 : 8];
-                        o_wr         = 1'b1;
-                        o_tx_start   = 1'b1;
+                        wdata_out      = rx_data_reg[15 : 8];
+                        wr_out         = 1'b1;
+                        tx_start_out   = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b010) begin
                     if (i_tx_done) begin
-                        o_wdata      = rx_data_reg[23 : 16];
-                        o_wr         = 1'b1;
-                        o_tx_start   = 1'b1;
+                        wdata_out      = rx_data_reg[23 : 16];
+                        wr_out         = 1'b1;
+                        tx_start_out   = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
                 else if (counter_reg == 3'b011) begin
                     if (i_tx_done) begin
-                        o_wdata      = rx_data_reg[31 : 24];
-                        o_wr         = 1'b1;
-                        o_tx_start   = 1'b1;
+                        wdata_out      = rx_data_reg[31 : 24];
+                        wr_out         = 1'b1;
+                        tx_start_out   = 1'b1;
                         counter_next = counter_reg + 1'b1;
                     end
                 end
             end 
             
             default: begin
-                o_done            = 1'b0;
-                o_regfile_rd      = 1'b0;
-                o_tx_start        = 1'b0;  
-                o_wr              = 1'b0;
-                o_wdata           = 8'h00;
+                done_out            = 1'b0;
+                regfile_rd_out      = 1'b0;
+                tx_start_out        = 1'b0;  
+                wr_out              = 1'b0;
+                wdata_out           = 8'h00;
                 rx_data_next      = rx_data_reg;
                 regfile_addr_next = regfile_addr_reg;
                 counter_next      = counter_reg;

@@ -8,7 +8,7 @@
 //               Instruction Decode stage. It also handles control signals for flushing and enabling the pipeline.
 //--------------------------------------------------------------------------------------------------
 
-´default nettype none
+`default_nettype none
 
 module if_id_reg
 #(

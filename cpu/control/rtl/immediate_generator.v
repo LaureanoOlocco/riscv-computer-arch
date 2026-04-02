@@ -14,7 +14,7 @@
 //                 - Parameterizable data width (NB_DATA).
 //--------------------------------------------------------------------------------------------------
 
-`default nettype none
+`default_nettype none
 
 module imm_gen
 #(

@@ -9,7 +9,7 @@
 //               to allow for proper PC updates during instruction fetch and branch/jump operations.
 //--------------------------------------------------------------------------------------------------
 
-`default nettype none
+`default_nettype none
 
 module pc
 #(

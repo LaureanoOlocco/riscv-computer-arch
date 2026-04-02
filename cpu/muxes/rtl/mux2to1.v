@@ -8,7 +8,7 @@
 //               - Selects between two NB_MUX-bit inputs based on a 1-bit select signal.
 //--------------------------------------------------------------------------------------------------
 
-`default nettype none
+`default_nettype none
 
 module mux_2to1
 #(

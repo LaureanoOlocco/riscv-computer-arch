@@ -16,18 +16,18 @@ module du_dmem_rx
     parameter NB_UART_DATA = 8    // NB of UART data
 ) (
     // Outputs
-    output reg                    o_done       ,  // Write done signal
-    output reg                    o_dmem_wr    ,  // Data memory write enable
-    output     [NB_ADDR - 1 : 0] o_dmem_waddr ,  // Data memory write address
-    output     [NB_DATA - 1 : 0] o_dmem_wdata ,  // Data memory write data
+    output wire                       o_done            ,  // Write done signal
+    output wire                       o_dmem_wr         ,  // Data memory write enable
+    output wire [NB_ADDR     - 1 : 0] o_dmem_waddr      ,  // Data memory write address
+    output wire [NB_DATA     - 1 : 0] o_dmem_wdata      ,  // Data memory write data
 
     // Inputs
-    input wire                         i_start   ,  // Start signal from master
-    input wire [NB_DATA - 1 : 0]      i_waddr   ,  // Write address from master (full 32-bit, truncated to NB_ADDR)
-    input wire                         i_rx_done ,  // UART RX byte received
-    input wire [NB_UART_DATA - 1 : 0] i_rx_data ,  // UART RX data byte
-    input wire                         i_rst     ,
-    input wire                         clk
+    input wire                        i_start           ,  // Start signal from master
+    input wire [NB_DATA      - 1 : 0] i_waddr           ,  // Write address from master (full 32-bit, truncated to NB_ADDR)
+    input wire                        i_rx_done         ,  // UART RX byte received
+    input wire [NB_UART_DATA - 1 : 0] i_rx_data         ,  // UART RX data byte
+    input wire                        i_rst             ,
+    input wire                        clk
 );
 
     // Local Parameters
@@ -51,9 +51,14 @@ module du_dmem_rx
     // Latched write address
     reg [NB_ADDR - 1 : 0] addr_reg, addr_next;
 
+    reg                   done_out;
+    reg                   dmem_wr_out;
+
     // Output Assignments
     assign o_dmem_waddr = addr_reg;
     assign o_dmem_wdata = word_reg;
+    assign o_done       = done_out;
+    assign o_dmem_wr    = dmem_wr_out;
 
     // Sequential Logic
     always @(posedge clk) begin
@@ -99,8 +104,8 @@ module du_dmem_rx
     // State Logic
     always @(*) begin
         // Defaults
-        o_done        = 1'b0;
-        o_dmem_wr     = 1'b0;
+        done_out      = 1'b0;
+        dmem_wr_out   = 1'b0;
         word_next     = word_reg;
         byte_cnt_next = byte_cnt_reg;
         addr_next     = addr_reg;
@@ -127,8 +132,8 @@ module du_dmem_rx
             end
 
             WRITE_MEM: begin
-                o_dmem_wr = 1'b1;
-                o_done    = 1'b1;
+                dmem_wr_out = 1'b1;
+                done_out    = 1'b1;
             end
 
             default: begin

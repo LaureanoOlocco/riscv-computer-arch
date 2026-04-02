@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 // Project     : RISC-V Computer Architecture
 // Module name : du_regfile_tx.v
-// Date        : 2024-08
+// Date        : 2026-02
 // Author      : Sofia Avalos - Laureano Olocco
 // Description : Register file transmitter over UART.
 //                - Sends current PC first, then reads registers sequentially.

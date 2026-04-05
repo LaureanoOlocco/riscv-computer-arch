@@ -52,7 +52,7 @@ module top
     // System
     // ------------------------------------------------------------------ //
     input  wire  i_rst         ,  //! Synchronous reset (active high)
-    input  wire  clk               //! System clock
+    input  wire  clock               //! System clock
 );
 
     // =====================================================================
@@ -69,7 +69,7 @@ module top
         .o_counter  (),           // unused
         .o_tick     (s_tick),
         .i_rst      (i_rst),
-        .clock      (clk)
+        .clock      (clock)
     );
 
     // =====================================================================
@@ -86,7 +86,7 @@ module top
         .i_rx           (i_uart_rx),
         .i_s_tick       (s_tick),
         .i_rst          (i_rst),
-        .clock          (clk)
+        .clock          (clock)
     );
 
     // =====================================================================
@@ -107,7 +107,7 @@ module top
         .i_wr         (rx_done),      // write on every received byte
         .i_data       (rx_data),
         .i_rst        (i_rst),
-        .clock        (clk)
+        .clock        (clock)
     );
 
     // rx_done_to_DU: pulse when there is new data in RX FIFO
@@ -132,7 +132,7 @@ module top
         .i_wr         (du_uart_wr),
         .i_data       (du_uart_wdata),
         .i_rst        (i_rst),
-        .clock        (clk)
+        .clock        (clock)
     );
 
     // =====================================================================
@@ -150,7 +150,7 @@ module top
         .i_tx_start     (du_tx_start & ~tx_fifo_empty),  // only start when FIFO has data
         .i_s_tick       (s_tick),
         .i_rst          (i_rst),
-        .clock          (clk)
+        .clock          (clock)
     );
 
     // =====================================================================
@@ -182,7 +182,7 @@ module top
 
         // System
         .i_rst        (i_rst),
-        .clk          (clk)
+        .clk          (clock)
     );
 
 endmodule

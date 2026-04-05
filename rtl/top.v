@@ -47,6 +47,7 @@ module top
     // ------------------------------------------------------------------ //
     output wire  o_uart_tx     ,  //! UART TX (to host)
     input  wire  i_uart_rx     ,  //! UART RX (from host)
+    input  wire  i_en          ,  //! External enable (e.g., tied to PLL locked signal)
 
     // ------------------------------------------------------------------ //
     // System
@@ -178,7 +179,7 @@ module top
         .i_tx_done    (tx_done_tick),     // TX byte done
 
         // External enable (tie high — no PLL used, or use PLL locked signal)
-        .i_en         (1'b1),
+        .i_en         (i_en),
 
         // System
         .i_rst        (i_rst),

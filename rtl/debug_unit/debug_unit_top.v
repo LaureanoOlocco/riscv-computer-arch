@@ -139,6 +139,20 @@ module debug_unit_top
     wire        bkp_hit;
 
     // =========================================================================
+    // RX FIFO interface: convertir el nivel `i_rx_done` (= ~rx_fifo_empty)
+    // en un pulso de 1 ciclo y popear la FIFO en el mismo ciclo.
+    // =========================================================================
+    reg rx_done_pulse_r;
+    always @(posedge clk) begin
+        if (i_rst)
+            rx_done_pulse_r <= 1'b0;
+        else
+            rx_done_pulse_r <= i_rx_done & ~rx_done_pulse_r;
+    end
+
+    wire rx_done_pulse = rx_done_pulse_r;
+
+    // =========================================================================
     // Module Instantiations
     // =========================================================================
 
@@ -179,7 +193,7 @@ module debug_unit_top
         .i_regfile_data      (i_regfile_data),
         .i_mem_data          (i_dmem_data),
         .i_bkp_hit           (bkp_hit),
-        .i_rx_done           (i_rx_done),
+        .i_rx_done           (rx_done_pulse),
         .i_rx_data           (i_rx_data),
         .i_rst               (i_rst),
         .clk                 (clk)
@@ -196,7 +210,7 @@ module debug_unit_top
         .o_mem_waddr (imem_loader_mem_waddr),
         .o_mem_wdata (imem_loader_mem_wdata),
         .i_start     (master_imem_loader_start),
-        .i_rx_done   (i_rx_done),
+        .i_rx_done   (rx_done_pulse),
         .i_rx_data   (i_rx_data),
         .i_rst       (i_rst),
         .clk         (clk)
@@ -252,7 +266,7 @@ module debug_unit_top
         .o_regfile_wdata (regfile_rx_wdata),
         .i_start         (master_regfile_rx_start),
         .i_waddr         (master_regfile_rx_addr),
-        .i_rx_done       (i_rx_done),
+        .i_rx_done       (rx_done_pulse),
         .i_rx_data       (i_rx_data),
         .i_rst           (i_rst),
         .clk             (clk)
@@ -270,7 +284,7 @@ module debug_unit_top
         .o_dmem_wdata (dmem_rx_wdata),
         .i_start      (master_dmem_rx_start),
         .i_waddr      (master_dmem_rx_addr),
-        .i_rx_done    (i_rx_done),
+        .i_rx_done    (rx_done_pulse),
         .i_rx_data    (i_rx_data),
         .i_rst        (i_rst),
         .clk          (clk)
@@ -343,7 +357,7 @@ module debug_unit_top
 
     // UART TX multiplexing (OR-gating — only one active at a time)
     assign o_tx_start  = regfile_tx_tx_start | dmem_tx_tx_start | resp_tx_start;
-    assign o_uart_rd   = 1'b0;  // RX FIFO read managed externally
+    assign o_uart_rd   = rx_done_pulse_r;  // popea la FIFO cada vez que consumimos un byte
     assign o_uart_wr   = regfile_tx_wr       | dmem_tx_wr       | resp_wr;
     assign o_uart_wdata= regfile_tx_wdata    | dmem_tx_wdata    | resp_wdata;
 

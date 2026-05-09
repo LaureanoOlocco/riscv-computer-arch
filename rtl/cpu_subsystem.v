@@ -83,6 +83,25 @@ module cpu_subsystem
     wire [NB_REG      - 1 : 0]     cpu_regfile_data_raw  ;
     wire [NB_DATA     - 1 : 0]     cpu_dmem_data_raw     ;
 
+    // Pipeline latch observations (CPU → DU, direct — already registered inside core)
+    wire [NB_PC       - 1 : 0]     cpu_ifid_pc           ;
+    wire [NB_DATA     - 1 : 0]     cpu_ifid_instr        ;
+    wire [8               : 0]      cpu_idex_ctrl         ;
+    wire [NB_DATA     - 1 : 0]     cpu_idex_rs1_data     ;
+    wire [NB_DATA     - 1 : 0]     cpu_idex_rs2_data     ;
+    wire [NB_DATA     - 1 : 0]     cpu_idex_imm          ;
+    wire [4               : 0]      cpu_idex_rd_addr      ;
+    wire [4               : 0]      cpu_idex_rs1_addr     ;
+    wire [4               : 0]      cpu_idex_rs2_addr     ;
+    wire [3               : 0]      cpu_exmem_ctrl        ;
+    wire [NB_DATA     - 1 : 0]     cpu_exmem_alu         ;
+    wire [NB_DATA     - 1 : 0]     cpu_exmem_data2       ;
+    wire [4               : 0]      cpu_exmem_rd_addr     ;
+    wire [1               : 0]      cpu_memwb_ctrl        ;
+    wire [NB_DATA     - 1 : 0]     cpu_memwb_data        ;
+    wire [NB_DATA     - 1 : 0]     cpu_memwb_alu         ;
+    wire [4               : 0]      cpu_memwb_rd_addr     ;
+
     // =====================================================================
     // Signal Buffering (1-cycle register for timing closure)
     // =====================================================================
@@ -128,6 +147,25 @@ module cpu_subsystem
         .o_instr        (cpu_instr_raw),
         .o_regfile_data (cpu_regfile_data_raw),
         .o_dmem_data    (cpu_dmem_data_raw),
+
+        // Pipeline latch observation
+        .o_ifid_pc       (cpu_ifid_pc),
+        .o_ifid_instr    (cpu_ifid_instr),
+        .o_idex_ctrl     (cpu_idex_ctrl),
+        .o_idex_rs1_data (cpu_idex_rs1_data),
+        .o_idex_rs2_data (cpu_idex_rs2_data),
+        .o_idex_imm      (cpu_idex_imm),
+        .o_idex_rd_addr  (cpu_idex_rd_addr),
+        .o_idex_rs1_addr (cpu_idex_rs1_addr),
+        .o_idex_rs2_addr (cpu_idex_rs2_addr),
+        .o_exmem_ctrl    (cpu_exmem_ctrl),
+        .o_exmem_alu     (cpu_exmem_alu),
+        .o_exmem_data2   (cpu_exmem_data2),
+        .o_exmem_rd_addr (cpu_exmem_rd_addr),
+        .o_memwb_ctrl    (cpu_memwb_ctrl),
+        .o_memwb_data    (cpu_memwb_data),
+        .o_memwb_alu     (cpu_memwb_alu),
+        .o_memwb_rd_addr (cpu_memwb_rd_addr),
 
         // DU → IMEM write
         .i_imem_data    (du_imem_wdata),
@@ -202,6 +240,25 @@ module cpu_subsystem
         .i_instruction   (instr_buf),
         .i_regfile_data  (regfile_data_buf),
         .i_dmem_data     (dmem_data_buf),
+
+        // Pipeline latch state (direct — already registered inside cpu_core)
+        .i_ifid_pc       (cpu_ifid_pc),
+        .i_ifid_instr    (cpu_ifid_instr),
+        .i_idex_ctrl     (cpu_idex_ctrl),
+        .i_idex_rs1_data (cpu_idex_rs1_data),
+        .i_idex_rs2_data (cpu_idex_rs2_data),
+        .i_idex_imm      (cpu_idex_imm),
+        .i_idex_rd_addr  (cpu_idex_rd_addr),
+        .i_idex_rs1_addr (cpu_idex_rs1_addr),
+        .i_idex_rs2_addr (cpu_idex_rs2_addr),
+        .i_exmem_ctrl    (cpu_exmem_ctrl),
+        .i_exmem_alu     (cpu_exmem_alu),
+        .i_exmem_data2   (cpu_exmem_data2),
+        .i_exmem_rd_addr (cpu_exmem_rd_addr),
+        .i_memwb_ctrl    (cpu_memwb_ctrl),
+        .i_memwb_data    (cpu_memwb_data),
+        .i_memwb_alu     (cpu_memwb_alu),
+        .i_memwb_rd_addr (cpu_memwb_rd_addr),
 
         // UART RX
         .i_rx_done       (i_rx_done),

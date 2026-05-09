@@ -24,6 +24,7 @@ module du_master
     output reg                         o_imem_loader_start ,  // Start du_imem_loader
     output reg                         o_regfile_tx_start  ,  // Start du_regfile_tx (full dump)
     output reg                         o_dmem_tx_start     ,  // Start du_dmem_tx
+    output reg                         o_latch_tx_start    ,  // Start du_latch_tx
     output reg                         o_regfile_rd        ,  // Register file read enable
     output reg [4 : 0]                 o_regfile_raddr     ,  // Register file read address
     output reg                         o_regfile_rx_start  ,  // Start du_regfile_rx
@@ -42,6 +43,7 @@ module du_master
     input wire                         i_imem_loader_done  ,  // du_imem_loader done
     input wire                         i_regfile_tx_done   ,  // du_regfile_tx done
     input wire                         i_dmem_tx_done      ,  // du_dmem_tx done
+    input wire                         i_latch_tx_done     ,  // du_latch_tx done
     input wire                         i_regfile_rx_done   ,  // du_regfile_rx done
     input wire                         i_dmem_rx_done      ,  // du_dmem_rx done
     input wire [NB_DATA - 1 : 0]       i_pc                ,  // Current PC
@@ -67,6 +69,7 @@ module du_master
     localparam [NB_UART_DATA - 1 : 0] CMD_CLR_BKP   = 8'h0A;
     localparam [NB_UART_DATA - 1 : 0] CMD_RESET     = 8'h0B;
     localparam [NB_UART_DATA - 1 : 0] CMD_STATUS    = 8'h0F;
+    localparam [NB_UART_DATA - 1 : 0] CMD_READ_LATCH= 8'h10;
     localparam [NB_UART_DATA - 1 : 0] STATUS_OK    = 8'h00;
     localparam [NB_UART_DATA - 1 : 0] STATUS_ERROR = 8'h01;
     localparam [NB_UART_DATA - 1 : 0] STATUS_BUSY  = 8'h02;
@@ -85,6 +88,7 @@ module du_master
     localparam [NB_STATE - 1 : 0] S_WRITE_MEM  = 16'h1000;
     localparam [NB_STATE - 1 : 0] S_RESPOND    = 16'h2000;
     localparam [NB_STATE - 1 : 0] S_WAIT_RESP  = 16'h4000;
+    localparam [NB_STATE - 1 : 0] S_SEND_LATCH = 16'h8000;
     localparam NB_BYTE_CNT   = 3;
     localparam NB_FRAME_SIZE = 6;
     reg [NB_STATE - 1 : 0] state_reg, next_state;
@@ -112,6 +116,7 @@ module du_master
     wire entering_send_mem = (state_reg == S_SEND_MEM)  && (prev_state_reg != S_SEND_MEM);
     wire entering_write_reg= (state_reg == S_WRITE_REG) && (prev_state_reg != S_WRITE_REG);
     wire entering_write_mem= (state_reg == S_WRITE_MEM) && (prev_state_reg != S_WRITE_MEM);
+    wire entering_send_latch=(state_reg == S_SEND_LATCH)&& (prev_state_reg != S_SEND_LATCH);
 
     integer i;
 
@@ -208,6 +213,7 @@ module du_master
                         CMD_CLR_BKP:   next_state = S_RESPOND;
                         CMD_RESET:     next_state = S_RESPOND;
                         CMD_STATUS:    next_state = S_RESPOND;
+                        CMD_READ_LATCH:next_state = S_SEND_LATCH;
                         default:       next_state = S_RESPOND;
                     endcase
                 end
@@ -259,6 +265,12 @@ module du_master
                 end
             end
 
+            S_SEND_LATCH: begin
+                if (i_latch_tx_done) begin
+                    next_state = S_RESPOND;
+                end
+            end
+
             S_WRITE_REG: begin
                 if (i_regfile_rx_done) begin
                     next_state = S_RESPOND;
@@ -296,6 +308,7 @@ module du_master
         o_imem_loader_start = entering_load_fw;
         o_regfile_tx_start  = entering_send_regs;
         o_dmem_tx_start     = entering_send_mem;
+        o_latch_tx_start    = entering_send_latch;
         o_regfile_rd        = 1'b0;
         o_regfile_raddr     = 5'b0;
         o_regfile_rx_start  = entering_write_reg;
@@ -429,6 +442,10 @@ module du_master
                             resp_data_next   = {29'b0, bkp_hit_reg, cpu_halted_reg, cpu_running_reg};
                         end
 
+                        CMD_READ_LATCH: begin
+                            // Stream serialized via du_latch_tx; final response built in S_SEND_LATCH
+                        end
+
                         default: begin
                             resp_status_next = STATUS_ERROR;
                             resp_data_next   = {NB_DATA{1'b0}};
@@ -527,6 +544,14 @@ module du_master
             S_SEND_MEM: begin
                 o_cpu_enable = 1'b0;
                 if (i_dmem_tx_done) begin
+                    resp_status_next = STATUS_OK;
+                    resp_data_next   = {NB_DATA{1'b0}};
+                end
+            end
+
+            S_SEND_LATCH: begin
+                o_cpu_enable = 1'b0;
+                if (i_latch_tx_done) begin
                     resp_status_next = STATUS_OK;
                     resp_data_next   = {NB_DATA{1'b0}};
                 end

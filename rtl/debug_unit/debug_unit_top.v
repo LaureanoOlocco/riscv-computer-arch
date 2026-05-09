@@ -60,6 +60,25 @@ module debug_unit_top
     input wire [NB_REG - 1 : 0]        i_regfile_data   ,  // Register read data
     input wire [NB_DATA - 1 : 0]       i_dmem_data      ,  // Data memory read data
 
+    // Inputs — Pipeline latch state (from cpu_core via cpu_subsystem)
+    input wire [NB_PC - 1 : 0]         i_ifid_pc        ,
+    input wire [NB_DATA - 1 : 0]       i_ifid_instr     ,
+    input wire [8 : 0]                  i_idex_ctrl      ,
+    input wire [NB_DATA - 1 : 0]       i_idex_rs1_data  ,
+    input wire [NB_DATA - 1 : 0]       i_idex_rs2_data  ,
+    input wire [NB_DATA - 1 : 0]       i_idex_imm       ,
+    input wire [4 : 0]                  i_idex_rd_addr   ,
+    input wire [4 : 0]                  i_idex_rs1_addr  ,
+    input wire [4 : 0]                  i_idex_rs2_addr  ,
+    input wire [3 : 0]                  i_exmem_ctrl     ,
+    input wire [NB_DATA - 1 : 0]       i_exmem_alu      ,
+    input wire [NB_DATA - 1 : 0]       i_exmem_data2    ,
+    input wire [4 : 0]                  i_exmem_rd_addr  ,
+    input wire [1 : 0]                  i_memwb_ctrl     ,
+    input wire [NB_DATA - 1 : 0]       i_memwb_data     ,
+    input wire [NB_DATA - 1 : 0]       i_memwb_alu      ,
+    input wire [4 : 0]                  i_memwb_rd_addr  ,
+
     // Inputs — UART RX
     input wire                          i_rx_done        ,  // UART RX byte received
     input wire [NB_UART_DATA - 1 : 0]  i_rx_data        ,  // UART RX data byte
@@ -78,6 +97,7 @@ module debug_unit_top
     wire        master_imem_loader_start;
     wire        master_regfile_tx_start;
     wire        master_dmem_tx_start;
+    wire        master_latch_tx_start;
     wire        master_regfile_rx_start;
     wire [4:0]  master_regfile_rx_addr;
     wire        master_dmem_rx_start;
@@ -116,6 +136,12 @@ module debug_unit_top
     wire [NB_UART_DATA-1:0] dmem_tx_wdata;
     wire        dmem_tx_mem_rd;
     wire [NB_ADDR-1:0] dmem_tx_mem_raddr;
+
+    // du_latch_tx outputs
+    wire        latch_tx_done;
+    wire        latch_tx_tx_start;
+    wire        latch_tx_wr;
+    wire [NB_UART_DATA-1:0] latch_tx_wdata;
 
     // du_regfile_rx outputs
     wire        regfile_rx_done;
@@ -169,6 +195,7 @@ module debug_unit_top
         .o_imem_loader_start (master_imem_loader_start),
         .o_regfile_tx_start  (master_regfile_tx_start),
         .o_dmem_tx_start     (master_dmem_tx_start),
+        .o_latch_tx_start    (master_latch_tx_start),
         .o_regfile_rd        (master_regfile_rd),
         .o_regfile_raddr     (master_regfile_raddr),
         .o_regfile_rx_start  (master_regfile_rx_start),
@@ -186,6 +213,7 @@ module debug_unit_top
         .i_imem_loader_done  (imem_loader_done),
         .i_regfile_tx_done   (regfile_tx_done),
         .i_dmem_tx_done      (dmem_tx_done),
+        .i_latch_tx_done     (latch_tx_done),
         .i_regfile_rx_done   (regfile_rx_done),
         .i_dmem_rx_done      (dmem_rx_done),
         .i_pc                (i_pc),
@@ -253,6 +281,39 @@ module debug_unit_top
         .i_tx_done   (i_tx_done),
         .i_rst       (i_rst),
         .clk         (clk)
+    );
+
+    // Pipeline Latch Transmitter (full dump of all 4 pipeline registers)
+    du_latch_tx #(
+        .NB_DATA      (NB_DATA),
+        .NB_PC        (NB_PC),
+        .NB_UART_DATA (NB_UART_DATA)
+    ) u_latch_tx (
+        .o_done          (latch_tx_done),
+        .o_tx_start      (latch_tx_tx_start),
+        .o_wr            (latch_tx_wr),
+        .o_wdata         (latch_tx_wdata),
+        .i_start         (master_latch_tx_start),
+        .i_ifid_pc       (i_ifid_pc),
+        .i_ifid_instr    (i_ifid_instr),
+        .i_idex_ctrl     (i_idex_ctrl),
+        .i_idex_rs1_data (i_idex_rs1_data),
+        .i_idex_rs2_data (i_idex_rs2_data),
+        .i_idex_imm      (i_idex_imm),
+        .i_idex_rd_addr  (i_idex_rd_addr),
+        .i_idex_rs1_addr (i_idex_rs1_addr),
+        .i_idex_rs2_addr (i_idex_rs2_addr),
+        .i_exmem_ctrl    (i_exmem_ctrl),
+        .i_exmem_alu     (i_exmem_alu),
+        .i_exmem_data2   (i_exmem_data2),
+        .i_exmem_rd_addr (i_exmem_rd_addr),
+        .i_memwb_ctrl    (i_memwb_ctrl),
+        .i_memwb_data    (i_memwb_data),
+        .i_memwb_alu     (i_memwb_alu),
+        .i_memwb_rd_addr (i_memwb_rd_addr),
+        .i_tx_done       (i_tx_done),
+        .i_rst           (i_rst),
+        .clk             (clk)
     );
 
     // Register File Receiver (write single register)
@@ -356,9 +417,9 @@ module debug_unit_top
     assign o_bkp_hit = bkp_hit;
 
     // UART TX multiplexing (OR-gating — only one active at a time)
-    assign o_tx_start  = regfile_tx_tx_start | dmem_tx_tx_start | resp_tx_start;
+    assign o_tx_start  = regfile_tx_tx_start | dmem_tx_tx_start | latch_tx_tx_start | resp_tx_start;
     assign o_uart_rd   = rx_done_pulse_r;  // popea la FIFO cada vez que consumimos un byte
-    assign o_uart_wr   = regfile_tx_wr       | dmem_tx_wr       | resp_wr;
-    assign o_uart_wdata= regfile_tx_wdata    | dmem_tx_wdata    | resp_wdata;
+    assign o_uart_wr   = regfile_tx_wr       | dmem_tx_wr       | latch_tx_wr       | resp_wr;
+    assign o_uart_wdata= regfile_tx_wdata    | dmem_tx_wdata    | latch_tx_wdata    | resp_wdata;
 
 endmodule

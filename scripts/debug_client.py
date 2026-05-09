@@ -26,6 +26,7 @@ CMD_SET_BKP   = 0x09
 CMD_CLR_BKP   = 0x0A
 CMD_RESET     = 0x0B
 CMD_STATUS    = 0x0F
+CMD_READ_LATCH = 0x10
 
 STATUS_OK    = 0x00
 STATUS_ERROR = 0x01
@@ -212,6 +213,88 @@ class DebugClient:
         self._check(status, "CLR_BKP")
         ok(f"Breakpoint borrado en {W}0x{addr:08X}{RST}")
 
+    def dump_latches(self):
+        # Comando -> 45 bytes de latches -> 5 bytes de response
+        self.ser.write(self._build_frame(CMD_READ_LATCH, 0))
+        self.ser.flush()
+        raw = self.ser.read(45)
+        if len(raw) < 45:
+            raise TimeoutError(f"Latch dump: {len(raw)}/45 bytes")
+        status, _ = self._recv_response()
+        self._check(status, "READ_LATCH")
+
+        # Layout (LE) — debe matchear du_latch_tx.v
+        ifid_pc       = struct.unpack('<I', raw[ 0: 4])[0]
+        ifid_instr    = struct.unpack('<I', raw[ 4: 8])[0]
+        idex_ctrl     = raw[8] | (raw[9] << 8)              # 9 bits
+        idex_rs1_data = struct.unpack('<I', raw[10:14])[0]
+        idex_rs2_data = struct.unpack('<I', raw[14:18])[0]
+        idex_imm      = struct.unpack('<I', raw[18:22])[0]
+        idex_rd_addr  = raw[22] & 0x1F
+        idex_rs1_addr = raw[23] & 0x1F
+        idex_rs2_addr = raw[24] & 0x1F
+        exmem_ctrl    = raw[25] & 0x0F
+        exmem_alu     = struct.unpack('<I', raw[26:30])[0]
+        exmem_data2   = struct.unpack('<I', raw[30:34])[0]
+        exmem_rd_addr = raw[34] & 0x1F
+        memwb_ctrl    = raw[35] & 0x03
+        memwb_data    = struct.unpack('<I', raw[36:40])[0]
+        memwb_alu     = struct.unpack('<I', raw[40:44])[0]
+        memwb_rd_addr = raw[44] & 0x1F
+
+        # ID/EX ctrl bits = {data_size[1:0], alu_op[1:0], mem_to_reg, alu_source, mem_write, mem_read, reg_write}
+        ide_reg_write  = (idex_ctrl >> 0) & 1
+        ide_mem_read   = (idex_ctrl >> 1) & 1
+        ide_mem_write  = (idex_ctrl >> 2) & 1
+        ide_alu_source = (idex_ctrl >> 3) & 1
+        ide_mem_to_reg = (idex_ctrl >> 4) & 1
+        ide_alu_op     = (idex_ctrl >> 5) & 0x3
+        ide_data_size  = (idex_ctrl >> 7) & 0x3
+
+        # EX/MEM ctrl = {mem_to_reg, mem_write, mem_read, reg_write}
+        exm_reg_write  = (exmem_ctrl >> 0) & 1
+        exm_mem_read   = (exmem_ctrl >> 1) & 1
+        exm_mem_write  = (exmem_ctrl >> 2) & 1
+        exm_mem_to_reg = (exmem_ctrl >> 3) & 1
+
+        # MEM/WB ctrl = {mem_to_reg, reg_write}
+        mwb_reg_write  = (memwb_ctrl >> 0) & 1
+        mwb_mem_to_reg = (memwb_ctrl >> 1) & 1
+
+        print(f"\n  {BOLD}{C}IF/ID:{RST}")
+        print(f"    PC      = {W}0x{ifid_pc:08X}{RST}")
+        print(f"    Instr   = {W}0x{ifid_instr:08X}{RST}")
+        print(f"  {BOLD}{C}ID/EX:{RST}")
+        print(f"    Ctrl    = 0x{idex_ctrl:03X}  "
+              f"{DIM}[ds={ide_data_size} aop={ide_alu_op} m2r={ide_mem_to_reg} "
+              f"asrc={ide_alu_source} mw={ide_mem_write} mr={ide_mem_read} rw={ide_reg_write}]{RST}")
+        print(f"    rs1_data= {W}0x{idex_rs1_data:08X}{RST}")
+        print(f"    rs2_data= {W}0x{idex_rs2_data:08X}{RST}")
+        print(f"    imm     = {W}0x{idex_imm:08X}{RST}")
+        print(f"    rd      = x{idex_rd_addr} {DIM}({_abi_name(idex_rd_addr)}){RST}")
+        print(f"    rs1     = x{idex_rs1_addr} {DIM}({_abi_name(idex_rs1_addr)}){RST}")
+        print(f"    rs2     = x{idex_rs2_addr} {DIM}({_abi_name(idex_rs2_addr)}){RST}")
+        print(f"  {BOLD}{C}EX/MEM:{RST}")
+        print(f"    Ctrl    = 0x{exmem_ctrl:01X}  "
+              f"{DIM}[m2r={exm_mem_to_reg} mw={exm_mem_write} mr={exm_mem_read} rw={exm_reg_write}]{RST}")
+        print(f"    ALU out = {W}0x{exmem_alu:08X}{RST}")
+        print(f"    data2   = {W}0x{exmem_data2:08X}{RST}")
+        print(f"    rd      = x{exmem_rd_addr} {DIM}({_abi_name(exmem_rd_addr)}){RST}")
+        print(f"  {BOLD}{C}MEM/WB:{RST}")
+        print(f"    Ctrl    = 0x{memwb_ctrl:01X}  "
+              f"{DIM}[m2r={mwb_mem_to_reg} rw={mwb_reg_write}]{RST}")
+        print(f"    Data    = {W}0x{memwb_data:08X}{RST}")
+        print(f"    ALU     = {W}0x{memwb_alu:08X}{RST}")
+        print(f"    rd      = x{memwb_rd_addr} {DIM}({_abi_name(memwb_rd_addr)}){RST}")
+
+        return {
+            'ifid':  {'pc': ifid_pc, 'instr': ifid_instr},
+            'idex':  {'ctrl': idex_ctrl, 'rs1_data': idex_rs1_data, 'rs2_data': idex_rs2_data,
+                      'imm': idex_imm, 'rd': idex_rd_addr, 'rs1': idex_rs1_addr, 'rs2': idex_rs2_addr},
+            'exmem': {'ctrl': exmem_ctrl, 'alu': exmem_alu, 'data2': exmem_data2, 'rd': exmem_rd_addr},
+            'memwb': {'ctrl': memwb_ctrl, 'data': memwb_data, 'alu': memwb_alu, 'rd': memwb_rd_addr},
+        }
+
     def dump_regs(self):
         status, _ = self._send_frame(CMD_READ_REG, 0xFF)
         self._check(status, "DUMP_REGS")
@@ -259,6 +342,8 @@ HELP = f"""
 
   {W}bkp <addr>{RST}                  Setea breakpoint
   {W}clr <addr>{RST}                  Borra breakpoint
+
+  {W}latch{RST}                       Dumpea los 4 latches del pipeline (IF/ID, ID/EX, EX/MEM, MEM/WB)
 
   {W}help{RST}                        Muestra esta ayuda
   {W}exit / quit / q{RST}             Sale del shell
@@ -342,6 +427,9 @@ def shell(client):
                 if len(parts) < 2:
                     err("Uso: clr <addr>"); continue
                 client.clear_breakpoint(parse_int(parts[1]))
+
+            elif cmd == 'latch':
+                client.dump_latches()
 
             else:
                 err(f"Comando desconocido: '{cmd}'. Escribí {W}help{RST} para ver los comandos.")

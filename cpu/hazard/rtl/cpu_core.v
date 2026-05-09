@@ -28,6 +28,28 @@ module cpu_core
   output wire [NB_INSTRUCTION                         - 1 : 0]  o_instr                             , // Current instruction (IF stage)
   output wire [NB_REG                                 - 1 : 0]  o_regfile_data                      , // Register file read data (DU inspection)
   output wire [NB_DATA                                - 1 : 0]  o_dmem_data                         , // Data memory read data (DU inspection)
+  // Pipeline latch observation (DU inspection)
+  // IF/ID
+  output wire [NB_PC                                  - 1 : 0]  o_ifid_pc                           , // IF/ID: PC
+  output wire [NB_INSTRUCTION                         - 1 : 0]  o_ifid_instr                        , // IF/ID: instruction
+  // ID/EX — ctrl = {data_size[1:0], alu_op[1:0], mem_to_reg, alu_source, mem_write, mem_read, reg_write}
+  output wire [8                                          : 0]  o_idex_ctrl                         ,
+  output wire [NB_DATA                                - 1 : 0]  o_idex_rs1_data                     ,
+  output wire [NB_DATA                                - 1 : 0]  o_idex_rs2_data                     ,
+  output wire [NB_DATA                                - 1 : 0]  o_idex_imm                          ,
+  output wire [4                                          : 0]  o_idex_rd_addr                      ,
+  output wire [4                                          : 0]  o_idex_rs1_addr                     ,
+  output wire [4                                          : 0]  o_idex_rs2_addr                     ,
+  // EX/MEM — ctrl = {mem_to_reg, mem_write, mem_read, reg_write}
+  output wire [3                                          : 0]  o_exmem_ctrl                        ,
+  output wire [NB_DATA                                - 1 : 0]  o_exmem_alu                         ,
+  output wire [NB_DATA                                - 1 : 0]  o_exmem_data2                       ,
+  output wire [4                                          : 0]  o_exmem_rd_addr                     ,
+  // MEM/WB — ctrl = {mem_to_reg, reg_write}
+  output wire [1                                          : 0]  o_memwb_ctrl                        ,
+  output wire [NB_DATA                                - 1 : 0]  o_memwb_data                        ,
+  output wire [NB_DATA                                - 1 : 0]  o_memwb_alu                         ,
+  output wire [4                                          : 0]  o_memwb_rd_addr                     ,
 //------------------------------------------ INPUTS PORTS -----------------------------------------//
   // Debug Unit → Instruction Memory write (firmware load)
   input wire  [NB_INSTRUCTION                         - 1 : 0]  i_imem_data                         , // Write data
@@ -688,5 +710,29 @@ module cpu_core
 
   // DU DMEM read: from DMEM port B (always available)
   assign o_dmem_data   = dmem_rdata_du                                                               ;
+
+  // Pipeline latch dumps (DU inspection)
+  assign o_ifid_pc       = ifid_pc                                                                   ;
+  assign o_ifid_instr    = ifid_instr                                                                ;
+
+  assign o_idex_ctrl     = {idex_data_size[1:0], idex_alu_op,
+                            idex_mem_to_reg, idex_alu_source,
+                            idex_mem_write, idex_mem_read, idex_reg_write}                           ;
+  assign o_idex_rs1_data = idex_rs1_data                                                             ;
+  assign o_idex_rs2_data = idex_rs2_data                                                             ;
+  assign o_idex_imm      = idex_immediate                                                            ;
+  assign o_idex_rd_addr  = idex_rd_addr                                                              ;
+  assign o_idex_rs1_addr = idex_rs1_addr                                                             ;
+  assign o_idex_rs2_addr = idex_rs2_addr                                                             ;
+
+  assign o_exmem_ctrl    = {exmem_mem_to_reg, exmem_mem_write, exmem_mem_read, exmem_reg_write}      ;
+  assign o_exmem_alu     = exmem_alu                                                                 ;
+  assign o_exmem_data2   = exmem_data2                                                               ;
+  assign o_exmem_rd_addr = exmem_rd_addr                                                             ;
+
+  assign o_memwb_ctrl    = {memwb_mem_to_reg, memwb_reg_write}                                       ;
+  assign o_memwb_data    = memwb_data                                                                ;
+  assign o_memwb_alu     = memwb_alu                                                                 ;
+  assign o_memwb_rd_addr = memwb_rd_addr                                                             ;
 
 endmodule

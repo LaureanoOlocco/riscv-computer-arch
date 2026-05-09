@@ -78,7 +78,7 @@ module du_regfile_tx
         if (i_rst) begin
             state_reg        <= IDLE;
             rx_data_reg      <= {NB_REG{1'b0}};
-            regfile_addr_reg <= {4{1'b0}};
+            regfile_addr_reg <= {5{1'b0}};
             counter_reg      <= {NB_COUNTER{1'b0}};
         end
         else begin
@@ -182,13 +182,13 @@ module du_regfile_tx
             READ_REG: begin
                 if (counter_reg == 3'b000) begin
                     regfile_rd_out      = 1'b1;
-                    regfile_addr_next = regfile_addr_reg + 1'b1;
                 end
                 
                 counter_next = counter_reg + 1'b1;
 
                 if (counter_reg == 3'b100) begin
                     rx_data_next = i_regfile_data;
+                    regfile_addr_next = regfile_addr_reg + 1'b1;
                     counter_next = {NB_COUNTER{1'b0}};
                 end
             end

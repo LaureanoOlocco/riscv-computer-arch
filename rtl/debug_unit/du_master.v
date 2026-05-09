@@ -99,7 +99,7 @@ module du_master
     reg cpu_halted_reg, cpu_halted_next;
     reg bkp_hit_reg, bkp_hit_next;
     reg [NB_STEP_CNT - 1 : 0] step_cnt_reg, step_cnt_next;
-    reg [1 : 0] step_cycle_reg, step_cycle_next;
+    reg [2 : 0] step_cycle_reg, step_cycle_next;
     reg [NB_DATA - 1 : 0]      resp_data_reg, resp_data_next;
     reg [NB_UART_DATA - 1 : 0] resp_status_reg, resp_status_next;
     reg [1 : 0] read_delay_reg, read_delay_next;
@@ -126,7 +126,7 @@ module du_master
             cpu_halted_reg  <= 1'b0;
             bkp_hit_reg     <= 1'b0;
             step_cnt_reg    <= {NB_STEP_CNT{1'b0}};
-            step_cycle_reg  <= 2'b00;
+            step_cycle_reg  <= 3'b000;
             resp_data_reg   <= {NB_DATA{1'b0}};
             resp_status_reg <= STATUS_OK;
             read_delay_reg  <= 2'b00;
@@ -230,7 +230,7 @@ module du_master
             end
 
             S_STEPPING: begin
-                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1} && step_cycle_reg == 2'd3) begin
+                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1} && step_cycle_reg == 3'd5) begin
                     next_state = S_RESPOND;
                 end
             end
@@ -470,7 +470,7 @@ module du_master
 
             S_STEPPING: begin
                 // Enable CPU for 1 cycle, wait 3 cycles (pipeline settle)
-                if (step_cycle_reg == 2'd0) begin
+                if (step_cycle_reg == 3'd0) begin
                     o_cpu_enable = 1'b1;
                 end
                 else begin
@@ -479,9 +479,9 @@ module du_master
 
                 step_cycle_next = step_cycle_reg + 1'b1;
 
-                if (step_cycle_reg == 2'd3) begin
+                if (step_cycle_reg == 3'd5) begin
                     step_cnt_next   = step_cnt_reg - 1'b1;
-                    step_cycle_next = 2'd0;
+                    step_cycle_next = 3'd0;
 
                     if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1}) begin
                         // Last step completed

@@ -136,13 +136,13 @@ module du_dmem_tx
             READ_MEM: begin
                 if (counter_reg == 3'b000) begin
                     mem_rd_out      = 1'b1;
-                    mem_addr_next = mem_addr_reg + 1'b1;
                 end
 
                 counter_next = counter_reg + 1'b1;
 
                 if (counter_reg == 3'b100) begin
                     rx_data_next = i_mem_data;
+                    mem_addr_next = mem_addr_reg + 1'b1;
                     counter_next = {NB_COUNTER{1'b0}};
                 end
             end

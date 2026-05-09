@@ -112,7 +112,7 @@ module du_imem_loader
             end
 
             WRITE_MEM: begin
-                if ((mem_addr_reg + 1'b1) == size_reg[NB_ADDR - 1 : 0]) begin
+                if ({{(NB_DATA - NB_ADDR){1'b0}}, mem_addr_reg + 1'b1} == size_reg) begin
                     next_state = IDLE;
                 end
                 else begin
@@ -173,7 +173,7 @@ module du_imem_loader
                 mem_addr_next = mem_addr_reg + 1'b1;
                 word_next     = {NB_DATA{1'b0}};
 
-                if ((mem_addr_reg + 1'b1) == size_reg[NB_ADDR - 1 : 0]) begin
+                if ({{(NB_DATA - NB_ADDR){1'b0}}, mem_addr_reg + 1'b1} == size_reg) begin
                     done_out = 1'b1;
                 end
             end

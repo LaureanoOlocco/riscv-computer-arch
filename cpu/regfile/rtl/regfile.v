@@ -33,7 +33,7 @@ module regfile
 
 //--------------------------------------- Sequential Logic ---------------------------------------//
   // Write Operation
-  always @(posedge i_reset or posedge clock) 
+  always @(posedge clock) 
   begin
     if (i_reset) 
     begin

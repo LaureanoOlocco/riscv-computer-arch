@@ -29,7 +29,7 @@ module fifo
     reg         [NB_ADDRESS                                            - 1 : 0] rd_ptr_next                     ;
     reg                                                                         full_flag                       ;
     reg                                                                         full_next                       ;
-    reg                                                                         empty_flag                      ; 
+    reg                                                                         empty_flag                      ;
     reg                                                                         empty_next                      ;
     reg [NB_DATA-1:0] data_out_reg;
 

@@ -19,8 +19,8 @@ module top
     // ------------------------------------------------------------------ //
     // System clock and UART parameters
     // ------------------------------------------------------------------ //
-    parameter CLK_FREQ          = 100_000_000 ,  //! FPGA clock frequency (Hz)
-    parameter BAUD_RATE         = 115_200     ,  //! UART baud rate (bps)
+    parameter CLK_FREQ          = 75_000_000 ,  //! FPGA clock frequency (Hz)
+    parameter BAUD_RATE         = 115_200    ,  //! UART baud rate (bps)
     parameter NB_BAUD_COUNTER   = 9          ,  //! Baud rate generator counter width
     parameter SM_TICK           = 16         ,  //! Oversampling ticks per bit
 
@@ -148,7 +148,7 @@ module top
         .o_tx           (o_uart_tx),
         .o_tx_done_tick (tx_done_tick),
         .i_data         (tx_fifo_data),
-        .i_tx_start     (du_tx_start & ~tx_fifo_empty),  // only start when FIFO has data
+        .i_tx_start     (~tx_fifo_empty),                 // start whenever FIFO has data
         .i_s_tick       (s_tick),
         .i_rst          (i_rst),
         .clock          (clock)

@@ -32,6 +32,7 @@ module cpu_subsystem
     input wire                          i_rx_done         ,  //! UART RX byte received
     input wire [NB_UART_DATA - 1 : 0]  i_rx_data         ,  //! UART RX data byte
     input wire                          i_tx_done         ,  //! UART TX byte done
+    input wire                          i_tx_fifo_empty   ,  //! UART TX FIFO empty (for drain wait)
 
     // =====================================================================
     // Inputs — External enable (e.g., PLL locked)
@@ -104,11 +105,33 @@ module cpu_subsystem
 
     // =====================================================================
     // Signal Buffering (1-cycle register for timing closure)
+    // Pipeline-latch signals are also buffered to break long combinational
+    // paths between cpu_core internal FFs and du_latch_tx FFs through two
+    // hierarchy levels. CPU is held in halt during the latch dump, so the
+    // extra cycle of latency does not affect program correctness.
     // =====================================================================
     reg [NB_PC    - 1 : 0]  pc_buf           ;
     reg [NB_DATA  - 1 : 0]  instr_buf        ;
     reg [NB_REG   - 1 : 0]  regfile_data_buf ;
     reg [NB_DATA  - 1 : 0]  dmem_data_buf    ;
+
+    reg [NB_PC    - 1 : 0]  ifid_pc_buf       ;
+    reg [NB_DATA  - 1 : 0]  ifid_instr_buf    ;
+    reg [8           : 0]   idex_ctrl_buf     ;
+    reg [NB_DATA  - 1 : 0]  idex_rs1_data_buf ;
+    reg [NB_DATA  - 1 : 0]  idex_rs2_data_buf ;
+    reg [NB_DATA  - 1 : 0]  idex_imm_buf      ;
+    reg [4           : 0]   idex_rd_addr_buf  ;
+    reg [4           : 0]   idex_rs1_addr_buf ;
+    reg [4           : 0]   idex_rs2_addr_buf ;
+    reg [3           : 0]   exmem_ctrl_buf    ;
+    reg [NB_DATA  - 1 : 0]  exmem_alu_buf     ;
+    reg [NB_DATA  - 1 : 0]  exmem_data2_buf   ;
+    reg [4           : 0]   exmem_rd_addr_buf ;
+    reg [1           : 0]   memwb_ctrl_buf    ;
+    reg [NB_DATA  - 1 : 0]  memwb_data_buf    ;
+    reg [NB_DATA  - 1 : 0]  memwb_alu_buf     ;
+    reg [4           : 0]   memwb_rd_addr_buf ;
 
     always @(posedge clk) begin
         if (i_rst) begin
@@ -116,12 +139,48 @@ module cpu_subsystem
             instr_buf        <= {NB_DATA{1'b0}} ;
             regfile_data_buf <= {NB_REG{1'b0}}  ;
             dmem_data_buf    <= {NB_DATA{1'b0}} ;
+
+            ifid_pc_buf       <= {NB_PC{1'b0}}   ;
+            ifid_instr_buf    <= {NB_DATA{1'b0}} ;
+            idex_ctrl_buf     <= 9'b0            ;
+            idex_rs1_data_buf <= {NB_DATA{1'b0}} ;
+            idex_rs2_data_buf <= {NB_DATA{1'b0}} ;
+            idex_imm_buf      <= {NB_DATA{1'b0}} ;
+            idex_rd_addr_buf  <= 5'b0            ;
+            idex_rs1_addr_buf <= 5'b0            ;
+            idex_rs2_addr_buf <= 5'b0            ;
+            exmem_ctrl_buf    <= 4'b0            ;
+            exmem_alu_buf     <= {NB_DATA{1'b0}} ;
+            exmem_data2_buf   <= {NB_DATA{1'b0}} ;
+            exmem_rd_addr_buf <= 5'b0            ;
+            memwb_ctrl_buf    <= 2'b0            ;
+            memwb_data_buf    <= {NB_DATA{1'b0}} ;
+            memwb_alu_buf     <= {NB_DATA{1'b0}} ;
+            memwb_rd_addr_buf <= 5'b0            ;
         end
         else begin
             pc_buf           <= cpu_pc_raw           ;
             instr_buf        <= cpu_instr_raw        ;
             regfile_data_buf <= cpu_regfile_data_raw ;
             dmem_data_buf    <= cpu_dmem_data_raw    ;
+
+            ifid_pc_buf       <= cpu_ifid_pc       ;
+            ifid_instr_buf    <= cpu_ifid_instr    ;
+            idex_ctrl_buf     <= cpu_idex_ctrl     ;
+            idex_rs1_data_buf <= cpu_idex_rs1_data ;
+            idex_rs2_data_buf <= cpu_idex_rs2_data ;
+            idex_imm_buf      <= cpu_idex_imm      ;
+            idex_rd_addr_buf  <= cpu_idex_rd_addr  ;
+            idex_rs1_addr_buf <= cpu_idex_rs1_addr ;
+            idex_rs2_addr_buf <= cpu_idex_rs2_addr ;
+            exmem_ctrl_buf    <= cpu_exmem_ctrl    ;
+            exmem_alu_buf     <= cpu_exmem_alu     ;
+            exmem_data2_buf   <= cpu_exmem_data2   ;
+            exmem_rd_addr_buf <= cpu_exmem_rd_addr ;
+            memwb_ctrl_buf    <= cpu_memwb_ctrl    ;
+            memwb_data_buf    <= cpu_memwb_data    ;
+            memwb_alu_buf     <= cpu_memwb_alu     ;
+            memwb_rd_addr_buf <= cpu_memwb_rd_addr ;
         end
     end
 
@@ -241,29 +300,30 @@ module cpu_subsystem
         .i_regfile_data  (regfile_data_buf),
         .i_dmem_data     (dmem_data_buf),
 
-        // Pipeline latch state (direct — already registered inside cpu_core)
-        .i_ifid_pc       (cpu_ifid_pc),
-        .i_ifid_instr    (cpu_ifid_instr),
-        .i_idex_ctrl     (cpu_idex_ctrl),
-        .i_idex_rs1_data (cpu_idex_rs1_data),
-        .i_idex_rs2_data (cpu_idex_rs2_data),
-        .i_idex_imm      (cpu_idex_imm),
-        .i_idex_rd_addr  (cpu_idex_rd_addr),
-        .i_idex_rs1_addr (cpu_idex_rs1_addr),
-        .i_idex_rs2_addr (cpu_idex_rs2_addr),
-        .i_exmem_ctrl    (cpu_exmem_ctrl),
-        .i_exmem_alu     (cpu_exmem_alu),
-        .i_exmem_data2   (cpu_exmem_data2),
-        .i_exmem_rd_addr (cpu_exmem_rd_addr),
-        .i_memwb_ctrl    (cpu_memwb_ctrl),
-        .i_memwb_data    (cpu_memwb_data),
-        .i_memwb_alu     (cpu_memwb_alu),
-        .i_memwb_rd_addr (cpu_memwb_rd_addr),
+        // Pipeline latch state (buffered for timing closure)
+        .i_ifid_pc       (ifid_pc_buf),
+        .i_ifid_instr    (ifid_instr_buf),
+        .i_idex_ctrl     (idex_ctrl_buf),
+        .i_idex_rs1_data (idex_rs1_data_buf),
+        .i_idex_rs2_data (idex_rs2_data_buf),
+        .i_idex_imm      (idex_imm_buf),
+        .i_idex_rd_addr  (idex_rd_addr_buf),
+        .i_idex_rs1_addr (idex_rs1_addr_buf),
+        .i_idex_rs2_addr (idex_rs2_addr_buf),
+        .i_exmem_ctrl    (exmem_ctrl_buf),
+        .i_exmem_alu     (exmem_alu_buf),
+        .i_exmem_data2   (exmem_data2_buf),
+        .i_exmem_rd_addr (exmem_rd_addr_buf),
+        .i_memwb_ctrl    (memwb_ctrl_buf),
+        .i_memwb_data    (memwb_data_buf),
+        .i_memwb_alu     (memwb_alu_buf),
+        .i_memwb_rd_addr (memwb_rd_addr_buf),
 
-        // UART RX
+        // UART RX / TX status
         .i_rx_done       (i_rx_done),
         .i_rx_data       (i_rx_data),
         .i_tx_done       (i_tx_done),
+        .i_tx_fifo_empty (i_tx_fifo_empty),
 
         // System
         .i_rst           (i_rst),

@@ -83,6 +83,7 @@ module debug_unit_top
     input wire                          i_rx_done        ,  // UART RX byte received
     input wire [NB_UART_DATA - 1 : 0]  i_rx_data        ,  // UART RX data byte
     input wire                          i_tx_done        ,  // UART TX done signal
+    input wire                          i_tx_fifo_empty  ,  // UART TX FIFO empty (drain done)
 
     // System
     input wire                          i_rst            ,
@@ -187,7 +188,7 @@ module debug_unit_top
         .NB_UART_DATA (NB_UART_DATA),
         .NB_DATA      (NB_DATA),
         .NB_ADDR      (NB_ADDR),
-        .NB_STATE     (16),
+        .NB_STATE     (17),
         .NB_STEP_CNT  (32)
     ) u_master (
         .o_cpu_enable        (master_cpu_enable),
@@ -223,6 +224,7 @@ module debug_unit_top
         .i_bkp_hit           (bkp_hit),
         .i_rx_done           (rx_done_pulse),
         .i_rx_data           (i_rx_data),
+        .i_tx_fifo_empty     (i_tx_fifo_empty),
         .i_rst               (i_rst),
         .clk                 (clk)
     );

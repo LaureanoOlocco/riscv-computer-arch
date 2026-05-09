@@ -177,6 +177,7 @@ module top
         .i_rx_done    (du_rx_done),       // data available in RX FIFO
         .i_rx_data    (rx_fifo_data),     // byte from RX FIFO
         .i_tx_done    (tx_done_tick),     // TX byte done
+        .i_tx_fifo_empty (tx_fifo_empty), // TX FIFO empty (drain wait)
 
         // External enable (tie high — no PLL used, or use PLL locked signal)
         .i_en         (i_en),

@@ -56,7 +56,7 @@ module tb_du_master;
         .NB_UART_DATA (NB_UART_DATA),
         .NB_DATA      (NB_DATA),
         .NB_ADDR      (NB_ADDR),
-        .NB_STATE     (16),
+        .NB_STATE     (17),
         .NB_STEP_CNT  (32)
     ) dut (
         .o_cpu_enable        (o_cpu_enable),

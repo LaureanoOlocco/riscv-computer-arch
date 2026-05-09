@@ -14,7 +14,7 @@ module du_master
     parameter NB_UART_DATA  = 8,   // NB of UART data
     parameter NB_DATA       = 32,  // NB of data width
     parameter NB_ADDR       = 8,   // NB of memory address width
-    parameter NB_STATE      = 16,  // NB of FSM states (one-hot)
+    parameter NB_STATE      = 17,  // NB of FSM states (one-hot)
     parameter NB_STEP_CNT   = 32,  // NB of step counter
     parameter HALT_INST     = 32'h1A1A1A1A  // Halt instruction
 ) (
@@ -53,6 +53,7 @@ module du_master
     input wire                         i_bkp_hit           ,  // Breakpoint hit signal
     input wire                         i_rx_done           ,  // UART RX byte received
     input wire [NB_UART_DATA - 1 : 0]  i_rx_data           ,  // UART RX data byte
+    input wire                         i_tx_fifo_empty     ,  // UART TX FIFO drained
     input wire                         i_rst               ,
     input wire                         clk
 );
@@ -73,22 +74,23 @@ module du_master
     localparam [NB_UART_DATA - 1 : 0] STATUS_OK    = 8'h00;
     localparam [NB_UART_DATA - 1 : 0] STATUS_ERROR = 8'h01;
     localparam [NB_UART_DATA - 1 : 0] STATUS_BUSY  = 8'h02;
-    localparam [NB_STATE - 1 : 0] S_IDLE       = 16'h0001;
-    localparam [NB_STATE - 1 : 0] S_RECV_CMD   = 16'h0002;
-    localparam [NB_STATE - 1 : 0] S_VALIDATE   = 16'h0004;
-    localparam [NB_STATE - 1 : 0] S_DISPATCH   = 16'h0008;
-    localparam [NB_STATE - 1 : 0] S_LOAD_FW    = 16'h0010;
-    localparam [NB_STATE - 1 : 0] S_EXECUTING  = 16'h0020;
-    localparam [NB_STATE - 1 : 0] S_STEPPING   = 16'h0040;
-    localparam [NB_STATE - 1 : 0] S_READ_REG   = 16'h0080;
-    localparam [NB_STATE - 1 : 0] S_READ_MEM   = 16'h0100;
-    localparam [NB_STATE - 1 : 0] S_SEND_REGS  = 16'h0200;
-    localparam [NB_STATE - 1 : 0] S_SEND_MEM   = 16'h0400;
-    localparam [NB_STATE - 1 : 0] S_WRITE_REG  = 16'h0800;
-    localparam [NB_STATE - 1 : 0] S_WRITE_MEM  = 16'h1000;
-    localparam [NB_STATE - 1 : 0] S_RESPOND    = 16'h2000;
-    localparam [NB_STATE - 1 : 0] S_WAIT_RESP  = 16'h4000;
-    localparam [NB_STATE - 1 : 0] S_SEND_LATCH = 16'h8000;
+    localparam [NB_STATE - 1 : 0] S_IDLE          = 17'h00001;
+    localparam [NB_STATE - 1 : 0] S_RECV_CMD      = 17'h00002;
+    localparam [NB_STATE - 1 : 0] S_VALIDATE      = 17'h00004;
+    localparam [NB_STATE - 1 : 0] S_DISPATCH      = 17'h00008;
+    localparam [NB_STATE - 1 : 0] S_LOAD_FW       = 17'h00010;
+    localparam [NB_STATE - 1 : 0] S_EXECUTING     = 17'h00020;
+    localparam [NB_STATE - 1 : 0] S_STEPPING      = 17'h00040;
+    localparam [NB_STATE - 1 : 0] S_READ_REG      = 17'h00080;
+    localparam [NB_STATE - 1 : 0] S_READ_MEM      = 17'h00100;
+    localparam [NB_STATE - 1 : 0] S_SEND_REGS     = 17'h00200;
+    localparam [NB_STATE - 1 : 0] S_SEND_MEM      = 17'h00400;
+    localparam [NB_STATE - 1 : 0] S_WRITE_REG     = 17'h00800;
+    localparam [NB_STATE - 1 : 0] S_WRITE_MEM     = 17'h01000;
+    localparam [NB_STATE - 1 : 0] S_RESPOND       = 17'h02000;
+    localparam [NB_STATE - 1 : 0] S_WAIT_RESP     = 17'h04000;
+    localparam [NB_STATE - 1 : 0] S_SEND_LATCH    = 17'h08000;
+    localparam [NB_STATE - 1 : 0] S_WAIT_TX_DRAIN = 17'h10000;
     localparam NB_BYTE_CNT   = 3;
     localparam NB_FRAME_SIZE = 6;
     reg [NB_STATE - 1 : 0] state_reg, next_state;
@@ -255,18 +257,26 @@ module du_master
 
             S_SEND_REGS: begin
                 if (i_regfile_tx_done) begin
-                    next_state = S_RESPOND;
+                    next_state = S_WAIT_TX_DRAIN;
                 end
             end
 
             S_SEND_MEM: begin
                 if (i_dmem_tx_done) begin
-                    next_state = S_RESPOND;
+                    next_state = S_WAIT_TX_DRAIN;
                 end
             end
 
             S_SEND_LATCH: begin
                 if (i_latch_tx_done) begin
+                    next_state = S_WAIT_TX_DRAIN;
+                end
+            end
+
+            S_WAIT_TX_DRAIN: begin
+                // Wait for the TX FIFO to fully drain so the response bytes
+                // do not collide via OR-gating with the tail of the dump.
+                if (i_tx_fifo_empty) begin
                     next_state = S_RESPOND;
                 end
             end
@@ -555,6 +565,10 @@ module du_master
                     resp_status_next = STATUS_OK;
                     resp_data_next   = {NB_DATA{1'b0}};
                 end
+            end
+
+            S_WAIT_TX_DRAIN: begin
+                o_cpu_enable = 1'b0;
             end
 
             S_WRITE_REG: begin

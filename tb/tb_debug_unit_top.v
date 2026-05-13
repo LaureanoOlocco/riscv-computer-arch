@@ -26,6 +26,24 @@ module tb_debug_unit_top;
     reg  [NB_DATA - 1 : 0]     i_instruction;
     reg  [NB_REG - 1 : 0]      i_regfile_data;
     reg  [NB_DATA - 1 : 0]     i_dmem_data;
+    reg  [NB_PC - 1 : 0]       i_ifid_pc;
+    reg  [NB_DATA - 1 : 0]     i_ifid_instr;
+    reg  [8 : 0]                i_idex_ctrl;
+    reg  [NB_DATA - 1 : 0]     i_idex_rs1_data;
+    reg  [NB_DATA - 1 : 0]     i_idex_rs2_data;
+    reg  [NB_DATA - 1 : 0]     i_idex_imm;
+    reg  [4 : 0]                i_idex_rd_addr;
+    reg  [4 : 0]                i_idex_rs1_addr;
+    reg  [4 : 0]                i_idex_rs2_addr;
+    reg  [3 : 0]                i_exmem_ctrl;
+    reg  [NB_DATA - 1 : 0]     i_exmem_alu;
+    reg  [NB_DATA - 1 : 0]     i_exmem_data2;
+    reg  [4 : 0]                i_exmem_rd_addr;
+    reg  [1 : 0]                i_memwb_ctrl;
+    reg  [NB_DATA - 1 : 0]     i_memwb_data;
+    reg  [NB_DATA - 1 : 0]     i_memwb_alu;
+    reg  [4 : 0]                i_memwb_rd_addr;
+    reg                         i_tx_fifo_empty;
 
     wire                        o_cpu_enable;
     wire                        o_cpu_reset;
@@ -87,9 +105,27 @@ module tb_debug_unit_top;
         .i_instruction   (i_instruction),
         .i_regfile_data  (i_regfile_data),
         .i_dmem_data     (i_dmem_data),
+        .i_ifid_pc       (i_ifid_pc),
+        .i_ifid_instr    (i_ifid_instr),
+        .i_idex_ctrl     (i_idex_ctrl),
+        .i_idex_rs1_data (i_idex_rs1_data),
+        .i_idex_rs2_data (i_idex_rs2_data),
+        .i_idex_imm      (i_idex_imm),
+        .i_idex_rd_addr  (i_idex_rd_addr),
+        .i_idex_rs1_addr (i_idex_rs1_addr),
+        .i_idex_rs2_addr (i_idex_rs2_addr),
+        .i_exmem_ctrl    (i_exmem_ctrl),
+        .i_exmem_alu     (i_exmem_alu),
+        .i_exmem_data2   (i_exmem_data2),
+        .i_exmem_rd_addr (i_exmem_rd_addr),
+        .i_memwb_ctrl    (i_memwb_ctrl),
+        .i_memwb_data    (i_memwb_data),
+        .i_memwb_alu     (i_memwb_alu),
+        .i_memwb_rd_addr (i_memwb_rd_addr),
         .i_rx_done       (i_rx_done),
         .i_rx_data       (i_rx_data),
         .i_tx_done       (i_tx_done),
+        .i_tx_fifo_empty (i_tx_fifo_empty),
         .i_rst           (i_rst),
         .clk             (clk)
     );
@@ -131,10 +167,13 @@ module tb_debug_unit_top;
 
     // Task: capture 5-byte response (simulating UART TX done handshake)
     task capture_response;
+        integer wait_cycles;
         begin
             resp_idx = 0;
-            while (resp_idx < 5) begin
+            wait_cycles = 0;
+            while (resp_idx < 5 && wait_cycles < 1000) begin
                 @(posedge clk);
+                wait_cycles = wait_cycles + 1;
                 if (o_uart_wr) begin
                     resp_bytes[resp_idx] = o_uart_wdata;
                     resp_idx = resp_idx + 1;
@@ -145,6 +184,11 @@ module tb_debug_unit_top;
                     @(posedge clk);
                     i_tx_done = 1'b0;
                 end
+            end
+
+            if (resp_idx < 5) begin
+                $display("ERROR: Timeout capturing response, got %0d/5 bytes", resp_idx);
+                errors = errors + 1;
             end
         end
     endtask
@@ -163,6 +207,24 @@ module tb_debug_unit_top;
         i_instruction = 32'h00000013;
         i_regfile_data= 32'h0;
         i_dmem_data   = 32'h0;
+        i_ifid_pc       = 32'h0;
+        i_ifid_instr    = 32'h0;
+        i_idex_ctrl     = 9'h0;
+        i_idex_rs1_data = 32'h0;
+        i_idex_rs2_data = 32'h0;
+        i_idex_imm      = 32'h0;
+        i_idex_rd_addr  = 5'h0;
+        i_idex_rs1_addr = 5'h0;
+        i_idex_rs2_addr = 5'h0;
+        i_exmem_ctrl    = 4'h0;
+        i_exmem_alu     = 32'h0;
+        i_exmem_data2   = 32'h0;
+        i_exmem_rd_addr = 5'h0;
+        i_memwb_ctrl    = 2'h0;
+        i_memwb_data    = 32'h0;
+        i_memwb_alu     = 32'h0;
+        i_memwb_rd_addr = 5'h0;
+        i_tx_fifo_empty = 1'b1;
         resp_idx      = 0;
 
         #(CLK_PERIOD * 5);
@@ -174,9 +236,6 @@ module tb_debug_unit_top;
         // ===========================================================
         $display("\n--- Integration Test 1: CMD_STATUS ---");
         send_cmd(8'h0F, 32'h00000000);
-
-        // Wait for processing
-        #(CLK_PERIOD * 10);
 
         // Capture response
         capture_response;
@@ -202,7 +261,6 @@ module tb_debug_unit_top;
         i_pc = 32'h00000080;
         send_cmd(8'h04, 32'h00000000);
 
-        #(CLK_PERIOD * 10);
         capture_response;
 
         $display("Response: status=0x%02h, PC=0x%02h%02h%02h%02h",
@@ -229,7 +287,6 @@ module tb_debug_unit_top;
         $display("\n--- Integration Test 3: CMD_SET_BKP + hit ---");
         send_cmd(8'h09, 32'h00000200);
 
-        #(CLK_PERIOD * 10);
         capture_response;
 
         // Now set PC to breakpoint address

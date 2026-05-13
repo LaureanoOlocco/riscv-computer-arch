@@ -199,7 +199,7 @@ module du_regfile_tx
                         counter_next = {NB_COUNTER{1'b0}};
                     end
 
-                    if (regfile_addr_reg == 5'd31) begin
+                    if (regfile_addr_reg == 5'd0) begin
                         done_out = 1'b1;
                     end
                 end

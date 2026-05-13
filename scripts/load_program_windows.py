@@ -33,6 +33,7 @@ import time
 
 # ----- Constantes del protocolo (ver du_master.v) -----------------------
 CMD_LOAD_FW      = 0x01
+CMD_STATUS       = 0x0F
 STATUS_OK        = 0x00
 STATUS_ERROR     = 0x01
 STATUS_BUSY      = 0x02
@@ -109,25 +110,33 @@ def load_firmware(ser: serial.Serial, file_path: str, append_halt: bool = True) 
     n = len(instructions)
     print(f"Firmware: {n} instrucciones ({n * 4} bytes)")
 
-    # --- Flush del FSM: mandar exactamente 1 frame nulo (6 bytes) ---
-    # Esto fuerza al FSM a procesar un comando invalido y volver a S_IDLE
-    print("Flushing FSM...")
-    ser.write(bytes(6))
-    ser.flush()
-    time.sleep(1.0)             # esperar que el FSM procese y responda
-    ser.reset_input_buffer()    # descartar la respuesta de error del flush
-    time.sleep(0.1)
-    # Test: mandar CMD_STATUS antes del firmware
-    STATUS_CMD = 0x0F
-    frame_status = build_cmd_frame(STATUS_CMD, 0)
+    # --- Verificar sincronizacion con un comando valido ---
+    # El protocolo no tiene byte start-of-frame, por eso no conviene inyectar
+    # frames nulos: si la FSM esta desfasada, pueden empeorar la alineacion.
+    print("Verificando debug unit con CMD_STATUS...")
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+    time.sleep(0.05)
+
+    frame_status = build_cmd_frame(CMD_STATUS, 0)
     print(f"TX status cmd : {frame_status.hex()}")
     ser.write(frame_status)
     ser.flush()
-    time.sleep(0.5)
-    resp_raw = ser.read(5)
-    print(f"RX status resp: {resp_raw.hex()}")
+
+    try:
+        status, status_data = read_response(ser)
+    except TimeoutError as e:
+        print(f"Error: {e}")
+        print("Revisa que la FPGA este programada, libera reset fisico y vuelve a intentar.")
+        return False
+
+    print(f"RX status resp: status={status_name(status)} data=0x{status_data:08X}")
+    if status != STATUS_OK:
+        return False
+
     ser.reset_input_buffer()
-    time.sleep(0.1)
+    time.sleep(0.05)
+
     # --- 1) Enviar CMD_LOAD_FW ---
     frame = build_cmd_frame(CMD_LOAD_FW, 0)
     print(f"TX cmd frame  : {frame.hex()}")

@@ -104,14 +104,15 @@ class DebugClient:
     def resync_uart(self):
         self.ser.reset_input_buffer()
         self.ser.reset_output_buffer()
+        time.sleep(0.05)
 
-        # Manda bytes nulos para limpiar/resincronizar FSM de RX
-        self.ser.write(bytes(6))
-        self.ser.flush()
-
-        time.sleep(0.2)
-
+    def sync_uart(self):
+        self.resync_uart()
+        status, data = self._send_frame(CMD_STATUS)
+        self._check(status, "SYNC")
         self.ser.reset_input_buffer()
+        ok("Debug unit sincronizada")
+        return data
 
     def reset(self):
         self.resync_uart()
@@ -221,17 +222,7 @@ class DebugClient:
         return pc, regs
 
     def write_reg(self, addr, value):
-        self.ser.write(self._build_frame(CMD_WRITE_REG, addr))
-        self.ser.flush()
-
-        self.ser.write(struct.pack("<I", value & 0xFFFFFFFF))
-        self.ser.flush()
-
-        status, _ = self._recv_response()
-
-        self._check(status, "WRITE_REG")
-
-        ok(f"x{addr} ({_abi_name(addr)}) ← 0x{value:08X}")
+        raise RuntimeError("WRITE_REG no está conectado en cpu_subsystem/cpu_core")
 
     def read_mem(self, addr):
         status, data = self._send_frame(CMD_READ_MEM, addr)
@@ -243,17 +234,7 @@ class DebugClient:
         return data
 
     def write_mem(self, addr, value):
-        self.ser.write(self._build_frame(CMD_WRITE_MEM, addr))
-        self.ser.flush()
-
-        self.ser.write(struct.pack("<I", value & 0xFFFFFFFF))
-        self.ser.flush()
-
-        status, _ = self._recv_response()
-
-        self._check(status, "WRITE_MEM")
-
-        ok(f"mem[0x{addr:08X}] ← 0x{value:08X}")
+        raise RuntimeError("WRITE_MEM no está conectado en cpu_subsystem/cpu_core")
 
     def set_breakpoint(self, addr):
         status, _ = self._send_frame(CMD_SET_BKP, addr)
@@ -323,12 +304,13 @@ Comandos disponibles:
   halt                        Detiene la CPU
   reset                       Resetea la CPU
   status                      Estado actual
+  sync                        Limpia buffers y verifica CMD_STATUS
 
   rr <reg>                    Lee registro 0-31, o 255 / 0xFF para dump
-  wr <reg> <valor>            Escribe registro
+  wr <reg> <valor>            No soportado: RTL no conecta escritura DU
 
   rm <addr>                   Lee memoria
-  wm <addr> <valor>           Escribe memoria
+  wm <addr> <valor>           No soportado: RTL no conecta escritura DU
 
   bkp <addr>                  Setea breakpoint
   clr <addr>                  Borra breakpoint
@@ -382,6 +364,9 @@ def shell(client):
 
             elif cmd == "status":
                 client.status()
+
+            elif cmd == "sync":
+                client.sync_uart()
 
             elif cmd == "rr":
                 if len(parts) < 2:
@@ -453,12 +438,22 @@ def main():
     print("RISC-V Debug Shell")
     print(f"Conectando a {port} @ {baudrate} baud...")
 
+    client = None
+
     try:
         client = DebugClient(port, baudrate)
+        client.sync_uart()
 
     except serial.SerialException as e:
         print(f"{R}Error al abrir puerto: {e}{RST}")
         sys.exit(1)
+
+    except (TimeoutError, RuntimeError) as e:
+        print(f"{R}No se pudo sincronizar con la debug unit: {e}{RST}")
+        print("Revisá que la FPGA esté programada, liberá reset físico y volvé a intentar.")
+        if client:
+            client.close()
+        sys.exit(2)
 
     print("Conectado. Escribí help para ver comandos.")
     print()

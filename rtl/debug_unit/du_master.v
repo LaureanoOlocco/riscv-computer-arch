@@ -229,10 +229,9 @@ module du_master
 
             S_EXECUTING: begin
                 if (i_instruction == HALT_INST || i_bkp_hit) begin
-                    next_state = S_RESPOND;
+                    next_state = S_IDLE;
                 end
-                // Can be interrupted by CMD_HALT via host (checked at IDLE re-entry)
-                if (i_rx_done) begin
+                else if (i_rx_done) begin
                     next_state = S_RECV_CMD;
                 end
             end
@@ -298,7 +297,7 @@ module du_master
             end
 
             S_WAIT_RESP: begin
-                if (cmd_opcode_reg == CMD_RUN) begin
+                if (cpu_running_reg) begin
                     next_state = S_EXECUTING;
                 end
                 else begin
@@ -487,9 +486,9 @@ module du_master
                     resp_status_next = STATUS_OK;
                     resp_data_next   = i_pc;
                 end
-                // If host sends a byte while executing, interrupt and parse new command
+                // Parse host commands while the CPU keeps running. Commands that need
+                // exclusive access stop the pipeline in their own states.
                 if (i_rx_done) begin
-                    cpu_running_next = 1'b0;
                     frame_next[0]    = i_rx_data;
                     byte_cnt_next    = 3'd1;
                 end
@@ -593,16 +592,12 @@ module du_master
                 o_resp_valid  = 1'b1;
                 o_resp_status = resp_status_reg;
                 o_resp_data   = resp_data_reg;
-
-                // For CMD_RUN, transition to S_EXECUTING happens after response
-                if (cmd_opcode_reg == CMD_RUN) begin
-                    cpu_running_next = 1'b1;
-                end
             end
 
             S_WAIT_RESP: begin
-                // After response sent, return to IDLE or EXECUTING
-                if (cmd_opcode_reg == CMD_RUN) begin
+                // After a response, continue execution only if the running flag survived
+                // the command that was just processed.
+                if (cpu_running_reg) begin
                     o_cpu_enable = 1'b1;
                 end
             end

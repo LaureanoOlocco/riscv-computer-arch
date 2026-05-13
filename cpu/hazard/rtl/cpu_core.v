@@ -272,7 +272,7 @@ module cpu_core
     .o_data_a           (imem_rdata),
     .o_data_b           (),
     .i_read_en_data_a   (1'b1),
-    .i_read_address_a   (pc_out[IMEM_ADDR_WIDTH-1:0]),
+    .i_read_address_a   (pc_out[IMEM_ADDR_WIDTH+1:2]),
     .i_read_en_data_b   (1'b0),
     .i_read_address_b   ({IMEM_ADDR_WIDTH{1'b0}}),
     .i_write_en         (i_imem_wen),

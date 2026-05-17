@@ -235,9 +235,9 @@ module cpu_core
 //--------------------------------------- Pipeline Enable Signals ---------------------------------//
   wire  pc_wen    = i_en & ~stall                                                                    ; // Stall freezes PC
   wire  ifid_en   = i_en & ~stall                                                                    ; // Stall freezes IF/ID
-  wire  idex_en   = i_en                                                                             ;
-  wire  exmem_en  = i_en                                                                             ;
-  wire  memwb_en  = i_en                                                                             ;
+  wire  idex_en   = ifid_en                                                                          ; // ID/EX avanza solo cuando IF/ID avanzó
+  wire  exmem_en  = idex_en                                                                          ; // EX/MEM avanza solo cuando ID/EX avanzó
+  wire  memwb_en  = exmem_en                                                                         ; // MEM/WB avanza solo cuando EX/MEM avanzó
   wire  reset_all = i_rst | i_du_rst                                                                 ;
 
 //---------------------------------------- IF Stage - PC & IMEM ----------------------------------//
@@ -488,10 +488,13 @@ module cpu_core
     .o_rs1_addr   (idex_rs1_addr),
     .o_rs2_addr   (idex_rs2_addr),
     .o_func7      (idex_func7),
-    .i_control    (ctrl_signals),
-    .i_rs1_data   (id_rs1_fwd),    // forwarded values into EX
+    .i_control    (((ifid_opcode_7b == 7'b1101111) || (ifid_opcode_7b == 7'b1100111)) ? (ctrl_signals | 9'b000001000) : ctrl_signals), // JAL/JALR: forzar ALU_SRC=1 para usar immediate=4
+    .i_rs1_data   ((ifid_opcode_7b == 7'b0010111 ||
+                      ifid_opcode_7b == 7'b1101111 ||
+                      ifid_opcode_7b == 7'b1100111) ? ifid_pc : id_rs1_fwd), // AUIPC/JAL/JALR: usa PC; otros: rs1 fwd
     .i_rs2_data   (id_rs2_fwd),
-    .i_immediate  (imm_ext),
+    .i_immediate  ((ifid_opcode_7b == 7'b1101111 ||
+                      ifid_opcode_7b == 7'b1100111) ? 32'd4 : imm_ext), // JAL/JALR: immediate=4 para calcular PC+4
     .i_rd_addr    (ifid_rd_addr),
     .i_func3      (ifid_func3),
     .i_rs1_addr   (ifid_rs1_addr),
@@ -697,7 +700,7 @@ module cpu_core
   // Regfile write: WB stage drives the write port
   assign regfile_wr_en   = memwb_reg_write & i_en                                                   ;
   assign regfile_wr_addr = memwb_rd_addr                                                            ;
-  assign regfile_wr_data = wb_result                                                                 ;
+  assign regfile_wr_data = wb_result                                                                ;
 
 //-------------------------------------------- Outputs -------------------------------------------//
 

@@ -237,7 +237,7 @@ module du_master
             end
 
             S_STEPPING: begin
-                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1} && step_cycle_reg == 3'd5) begin
+                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1}) begin
                     next_state = S_RESPOND;
                 end
             end
@@ -397,7 +397,7 @@ module du_master
 
                         CMD_STEP: begin
                             step_cnt_next   = (cmd_payload_reg == {NB_DATA{1'b0}}) ? 32'd1 : cmd_payload_reg;
-                            step_cycle_next = 2'd0;
+                            step_cycle_next = 3'd0;  // FIX: era 2'd0, step_cycle_reg es [2:0]
                         end
 
                         CMD_HALT: begin
@@ -495,26 +495,15 @@ module du_master
             end
 
             S_STEPPING: begin
-                // Enable CPU for 1 cycle, wait 3 cycles (pipeline settle)
-                if (step_cycle_reg == 3'd0) begin
-                    o_cpu_enable = 1'b1;
-                end
-                else begin
-                    o_cpu_enable = 1'b0;
-                end
+                // 1 ciclo de enable por step = 1 etapa de pipeline.
+                // Para completar una instrucción completa se necesitan 5 steps (IF→ID→EX→MEM→WB).
+                o_cpu_enable    = 1'b1;
+                step_cnt_next   = step_cnt_reg - 1'b1;
 
-                step_cycle_next = step_cycle_reg + 1'b1;
-
-                if (step_cycle_reg == 3'd5) begin
-                    step_cnt_next   = step_cnt_reg - 1'b1;
-                    step_cycle_next = 3'd0;
-
-                    if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1}) begin
-                        // Last step completed
-                        cpu_running_next = 1'b0;
-                        resp_status_next = STATUS_OK;
-                        resp_data_next   = i_pc;
-                    end
+                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1}) begin
+                    cpu_running_next = 1'b0;
+                    resp_status_next = STATUS_OK;
+                    resp_data_next   = i_pc;
                 end
             end
 
@@ -549,7 +538,7 @@ module du_master
                     resp_data_next   = {NB_DATA{1'b0}};
                 end
             end
-
+            
             S_SEND_MEM: begin
                 o_cpu_enable = 1'b0;
                 if (i_dmem_tx_done) begin

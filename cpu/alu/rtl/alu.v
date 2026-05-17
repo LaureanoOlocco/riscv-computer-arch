@@ -53,6 +53,9 @@ module alu
   localparam                                                    SRA_OP = 6'b000011                  ;
   localparam                                                    SRL_OP = 6'b000010                  ;
   localparam                                                    NOR_OP = 6'b100111                  ;
+  localparam                                                    SLL_OP = 6'b000000                  ;
+  localparam                                                    SLT_OP = 6'b000100                  ;
+  localparam                                                    SLTU_OP= 6'b000101                  ;
 
 //------------------------------------------ Registers -------------------------------------------// 
   reg       [NB_DATA                                      : 0]  result                              ;
@@ -69,6 +72,9 @@ module alu
       SRA_OP  : result = {1'b0, ($signed(i_data_a) >>> i_data_b[$clog2(NB_DATA)-1:0])}              ; 
       SRL_OP  : result = {1'b0, (i_data_a >>  i_data_b[$clog2(NB_DATA)-1:0])}                       ; 
       NOR_OP  : result = {1'b0, ~(i_data_a | i_data_b)}                                             ; 
+      SLL_OP  : result = {1'b0, (i_data_a << i_data_b[4:0])}                                        ; 
+      SLT_OP  : result = {{NB_DATA{1'b0}}, ($signed(i_data_a) < $signed(i_data_b) ? 1'b1 : 1'b0)} ; 
+      SLTU_OP : result = {{NB_DATA{1'b0}}, (i_data_a < i_data_b ? 1'b1 : 1'b0)}                   ; 
       default : result = {(NB_DATA+1){1'b0}}                                                        ; 
     endcase                             
   end

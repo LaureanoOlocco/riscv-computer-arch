@@ -180,11 +180,8 @@ module du_regfile_tx
             end
             
             READ_REG: begin
-                if (counter_reg == 3'b000) begin
-                    regfile_rd_out      = 1'b1;
-                end
-                
-                counter_next = counter_reg + 1'b1;
+                regfile_rd_out  = 1'b1;
+                counter_next    = counter_reg + 1'b1;
 
                 if (counter_reg == 3'b100) begin
                     rx_data_next = i_regfile_data;

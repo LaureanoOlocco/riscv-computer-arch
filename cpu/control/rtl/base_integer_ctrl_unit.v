@@ -74,13 +74,13 @@ module base_integer_ctrl_unit
       R_TYPE                                                                                        : 
       begin
         ctrl_out[REG_WRITE_INDEX                ] = 1'b1                                            ; // Enable register write for R-type instructions
-        ctrl_out[ALU_OP_INDEX + 1 : ALU_OP_INDEX] = 2'b11                                           ; // ALU operation code for R-type instructions (e.g., add, sub, etc.)
+        ctrl_out[ALU_OP_INDEX + 1 : ALU_OP_INDEX] = 2'b10                                           ; // ALU operation code for R-type instructions (R_TYPE_INSTR en alu_ctrl_unit)
       end
       I_TYPE_1                                                                                      : 
       begin
         ctrl_out[REG_WRITE_INDEX                ] = 1'b1                                            ; // Enable register write for I-type instructions (e.g., addi, lui)
         ctrl_out[ALU_SRC_INDEX                  ] = 1'b1                                            ; // Select immediate value as ALU source
-        ctrl_out[ALU_OP_INDEX + 1 : ALU_OP_INDEX] = 2'b10                                           ; // ALU operation code for I-type instructions (e.g., addi)
+        ctrl_out[ALU_OP_INDEX + 1 : ALU_OP_INDEX] = 2'b11                                           ; // ALU operation code for I-type instructions (I_TYPE_INSTR en alu_ctrl_unit)
       end
       I_TYPE_2                                                                                      : 
       begin

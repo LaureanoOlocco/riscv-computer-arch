@@ -12,14 +12,6 @@ script.py
 # Images
 img/
 
-# Old UART TP testbenches (belong to dev-uart, not dev-riscv)
-tb/baud_rate_gen_tb.sv
-tb/fifo_tb.sv
-tb/interface_tb.sv
-tb/top_uart_tb.sv
-tb/uart_rx_tb.sv
-tb/uart_tx_tb.sv
-
 # Python cache
 __pycache__/
 *.pyc

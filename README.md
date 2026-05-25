@@ -1,63 +1,63 @@
 # RISC-V Computer Architecture
 
-Implementacion en Verilog/SystemVerilog de un sistema RISC-V RV32I para FPGA, con CPU pipeline de 5 etapas, unidad de debug por UART y herramientas de host para ensamblar, cargar y controlar firmware.
+Verilog/SystemVerilog implementation of an RV32I RISC-V system for FPGA, with a 5-stage pipelined CPU, UART debug unit, and host-side tools to assemble, load, and control firmware.
 
-El repositorio ya contiene documentacion por modulo en `modules/**/docs`. Esta pagina funciona como entrada principal del proyecto.
+The repository already includes per-module documentation under `modules/**/docs`. This page is the main project entry point.
 
-## Caracteristicas
+## Features
 
-- CPU RV32I de 32 bits con pipeline IF, ID, EX, MEM y WB.
-- Manejo de hazards de datos con stalls y forwarding en ID, EX y MEM.
-- Manejo de hazards de control para saltos y branches resueltos en ID.
-- Memoria de instrucciones y memoria de datos basadas en `block_ram`.
-- Unidad de debug por UART para cargar firmware, correr, pausar, ejecutar pasos, leer registros, leer memoria y configurar breakpoints.
-- UART 115200 8N1 por defecto, con FIFOs RX/TX.
-- Top para FPGA Nexys 4 con constraints en `boards/Nexys-4-Master.xdc`.
-- Scripts Python para ensamblar RV32I y comunicarse con la debug unit.
+- 32-bit RV32I CPU with IF, ID, EX, MEM, and WB pipeline stages.
+- Data hazard handling with stalls and forwarding in ID, EX, and MEM.
+- Control hazard handling for jumps and branches resolved in ID.
+- Instruction and data memories based on `block_ram`.
+- UART debug unit for firmware loading, run, halt, step, register reads, memory reads, and breakpoints.
+- UART 115200 8N1 by default, with RX/TX FIFOs.
+- Nexys 4 FPGA top-level with constraints in `boards/Nexys-4-Master.xdc`.
+- Python scripts for RV32I assembly and debug-unit communication.
 
-## Estructura
+## Repository Layout
 
-| Ruta | Contenido |
-|------|-----------|
-| `modules/cpu/` | CPU, ALU, control, hazards, pipeline registers, memorias, muxes, PC y regfile. |
-| `modules/debug_unit/` | Controlador de debug, protocolo UART, carga de IMEM, lectura de registros/memoria y breakpoints. |
-| `modules/uart/` | UART RX/TX, generador de baud rate, FIFO e interfaz legacy. |
-| `modules/top/` | Integracion de CPU, debug unit, UART, FIFOs y wrapper de FPGA. |
-| `scripts/` | Ensamblador RV32I simple y clientes de debug/carga. |
-| `code/asm/` | Programas de ejemplo en assembler RV32I. |
-| `code/bin/` | Binarios de ejemplo generados para cargar en IMEM. |
-| `boards/` | Constraints de placa. |
-| `docs/` | Documentacion de arquitectura, protocolo y flujo de desarrollo. |
+| Path | Contents |
+|------|----------|
+| `modules/cpu/` | CPU, ALU, control, hazards, pipeline registers, memories, muxes, PC, and register file. |
+| `modules/debug_unit/` | Debug controller, UART protocol, IMEM loader, register/memory reads, and breakpoints. |
+| `modules/uart/` | UART RX/TX, baud-rate generator, FIFO, and legacy interface. |
+| `modules/top/` | CPU, debug unit, UART, FIFOs, and FPGA wrapper integration. |
+| `scripts/` | Simple RV32I assembler and debug/loading clients. |
+| `code/asm/` | Example RV32I assembly programs. |
+| `code/bin/` | Example binaries generated for IMEM loading. |
+| `boards/` | Board constraints. |
+| `docs/` | Architecture, protocol, and development documentation. |
 
-## Lectura recomendada
+## Recommended Reading
 
-- [Arquitectura del sistema](docs/ARCHITECTURE.md)
-- [Protocolo de debug UART](docs/DEBUG_PROTOCOL.md)
-- [Desarrollo, simulacion y FPGA](docs/DEVELOPMENT.md)
+- [System Architecture](docs/ARCHITECTURE.md)
+- [UART Debug Protocol](docs/DEBUG_PROTOCOL.md)
+- [Development, Simulation, and FPGA](docs/DEVELOPMENT.md)
 
-## Requisitos
+## Requirements
 
 - Python 3.
-- `pyserial` para usar el cliente UART: `python3 -m pip install pyserial`.
-- Icarus Verilog u otro simulador compatible con Verilog/SystemVerilog para testbenches.
-- Vivado para sintesis/implementacion FPGA.
-- En Vivado, generar un IP `clk_wiz_0` con entrada de 100 MHz y salida de 75 MHz, porque `modules/top/top_wrapper.v` lo instancia.
+- `pyserial` for the UART client: `python3 -m pip install pyserial`.
+- Icarus Verilog or another Verilog/SystemVerilog-compatible simulator for testbenches.
+- Vivado for FPGA synthesis and implementation.
+- In Vivado, generate a `clk_wiz_0` IP with a 100 MHz input and a 75 MHz output, because `modules/top/top_wrapper.v` instantiates it.
 
-## Uso rapido
+## Quick Start
 
-Ensamblar un programa RV32I:
+Assemble an RV32I program:
 
 ```bash
 python3 scripts/parser.py code/asm/test_program.s code/bin/test_program.bin -v
 ```
 
-Abrir la shell de debug por UART:
+Open the UART debug shell:
 
 ```bash
 python3 scripts/debug_client.py /dev/ttyUSB0 115200
 ```
 
-Comandos utiles dentro de la shell:
+Useful shell commands:
 
 ```text
 sync
@@ -72,15 +72,15 @@ bkp 0x20
 clr 0x20
 ```
 
-En Windows se puede cargar firmware con:
+On Windows, firmware can be loaded with:
 
 ```bash
 python scripts/load_program_windows.py COM3 115200 code/bin/test_program.bin
 ```
 
-## Simulacion
+## Simulation
 
-No hay un `Makefile` global en el repo. Los testbenches se compilan indicando el test y sus dependencias RTL. Ejemplo simple para la ALU:
+There is no global `Makefile` in the repository. Testbenches are compiled by listing the testbench and its RTL dependencies. Simple ALU example:
 
 ```bash
 mkdir -p build
@@ -88,22 +88,22 @@ iverilog -g2012 -o build/alu_tb.vvp modules/cpu/alu/rtl/alu.v modules/cpu/alu/te
 vvp build/alu_tb.vvp
 ```
 
-Para testbenches integrados, agregar todos los modulos RTL instanciados por el DUT. Ver [Desarrollo, simulacion y FPGA](docs/DEVELOPMENT.md) para mas detalle.
+For integrated testbenches, add every RTL module instantiated by the DUT. See [Development, Simulation, and FPGA](docs/DEVELOPMENT.md) for more detail.
 
-## Top-level FPGA
+## FPGA Top Level
 
-El top de placa es `modules/top/top_wrapper.v`.
+The board top-level is `modules/top/top_wrapper.v`.
 
-Flujo principal:
+Main flow:
 
-1. `top_wrapper` toma el clock de placa de 100 MHz, usa `clk_wiz_0` para generar 75 MHz y sincroniza reset/UART RX.
-2. `top` instancia baud rate, UART RX/TX, FIFOs y `cpu_subsystem`.
-3. `cpu_subsystem` integra `cpu_core` con `debug_unit_top`.
-4. El host se comunica por USB-UART usando `scripts/debug_client.py`.
+1. `top_wrapper` receives the 100 MHz board clock, uses `clk_wiz_0` to generate 75 MHz, and synchronizes reset/UART RX.
+2. `top` instantiates the baud-rate generator, UART RX/TX, FIFOs, and `cpu_subsystem`.
+3. `cpu_subsystem` integrates `cpu_core` with `debug_unit_top`.
+4. The host communicates over USB-UART using `scripts/debug_client.py`.
 
-## Estado actual y limitaciones
+## Current Status and Limitations
 
-- `WRITE_REG` y `WRITE_MEM` existen en el protocolo RTL, pero no estan conectados a nivel `cpu_subsystem/cpu_core`; el cliente Python los reporta como no soportados.
-- `READ_LATCH` existe en RTL y transmite 45 bytes con los registros de pipeline, pero la shell Python actual no expone un comando interactivo para usarlo.
-- La debug unit usa `NB_ADDR = 8` por defecto para direcciones de debug, mientras IMEM/DMEM tienen `IMEM_ADDR_WIDTH = 10` y `DMEM_ADDR_WIDTH = 10` por defecto. Esto da acceso debug directo a las primeras 256 palabras de memorias de 1024 palabras.
-- `step N` habilita la CPU por N ciclos de pipeline. Para avanzar una instruccion completa de IF a WB suelen hacer falta 5 steps.
+- `WRITE_REG` and `WRITE_MEM` exist in the RTL protocol, but they are not connected at `cpu_subsystem/cpu_core` level; the Python client reports them as unsupported.
+- `READ_LATCH` exists in RTL and transmits 45 bytes with the pipeline registers, but the current Python shell does not expose an interactive command for it.
+- The debug unit uses `NB_ADDR = 8` by default for debug addresses, while IMEM/DMEM use `IMEM_ADDR_WIDTH = 10` and `DMEM_ADDR_WIDTH = 10` by default. This gives direct debug access to the first 256 words of 1024-word memories.
+- `step N` enables the CPU for N pipeline cycles. Advancing one full instruction from IF to WB usually requires 5 steps.

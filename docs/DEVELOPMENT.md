@@ -1,10 +1,10 @@
-# Desarrollo, Simulacion y FPGA
+# Development, Simulation, and FPGA
 
-Este documento describe el flujo practico para trabajar con el proyecto.
+This document describes the practical workflow for working with the project.
 
-## Convenciones del repo
+## Repository Conventions
 
-Los modulos suelen seguir esta estructura:
+Modules usually follow this structure:
 
 ```text
 modules/<subsystem>/<component>/rtl/
@@ -12,40 +12,40 @@ modules/<subsystem>/<component>/tests/
 modules/<subsystem>/<component>/docs/
 ```
 
-Excepciones:
+Exceptions:
 
-- `modules/top/` contiene integracion top-level directamente.
-- `modules/cpu/hazard/rtl/cpu_core.v` contiene el core completo integrado.
-- `boards/` contiene constraints de FPGA.
-- `scripts/` contiene herramientas de host.
+- `modules/top/` contains top-level integration directly.
+- `modules/cpu/hazard/rtl/cpu_core.v` contains the full integrated core.
+- `boards/` contains FPGA constraints.
+- `scripts/` contains host-side tools.
 
-## Ensamblar firmware
+## Assemble Firmware
 
-El ensamblador simple esta en `scripts/parser.py`. Soporta un subconjunto RV32I, labels, comentarios y nombres ABI de registros.
+The simple assembler is `scripts/parser.py`. It supports a subset of RV32I, labels, comments, and ABI register names.
 
-Ejemplo:
+Example:
 
 ```bash
 python3 scripts/parser.py code/asm/test_program.s code/bin/test_program.bin -v
 ```
 
-El binario resultante contiene instrucciones de 32 bits little-endian, listas para cargar por debug UART.
+The resulting binary contains little-endian 32-bit instructions, ready to be loaded through the UART debug unit.
 
-## Usar la shell de debug
+## Use the Debug Shell
 
-Instalar dependencia Python:
+Install the Python dependency:
 
 ```bash
 python3 -m pip install pyserial
 ```
 
-Abrir shell:
+Open the shell:
 
 ```bash
 python3 scripts/debug_client.py /dev/ttyUSB0 115200
 ```
 
-Flujo tipico:
+Typical flow:
 
 ```text
 sync
@@ -58,17 +58,17 @@ rr 255
 rm 0x00
 ```
 
-Notas:
+Notes:
 
-- `load` agrega `0x1A1A1A1A` al final por defecto como instruccion de halt.
-- `rr 255` hace dump de PC + 32 registros.
-- `wr` y `wm` aparecen en la ayuda pero no estan soportados por la integracion actual de CPU.
+- `load` appends `0x1A1A1A1A` by default as a halt instruction.
+- `rr 255` dumps PC + all 32 registers.
+- `wr` and `wm` appear in the help text but are not supported by the current CPU integration.
 
-## Simular modulos
+## Simulate Modules
 
-No hay runner global. Compilar cada testbench con sus dependencias RTL.
+There is no global runner. Compile each testbench with its RTL dependencies.
 
-Ejemplo ALU:
+ALU example:
 
 ```bash
 mkdir -p build
@@ -76,7 +76,7 @@ iverilog -g2012 -o build/alu_tb.vvp modules/cpu/alu/rtl/alu.v modules/cpu/alu/te
 vvp build/alu_tb.vvp
 ```
 
-Ejemplo UART TX:
+UART TX example:
 
 ```bash
 mkdir -p build
@@ -84,21 +84,21 @@ iverilog -g2012 -o build/uart_tx_tb.vvp modules/uart/core/rtl/uart_tx.v modules/
 vvp build/uart_tx_tb.vvp
 ```
 
-Para testbenches integrados, incluir todos los RTL que instancia el DUT. Si aparece un error como `Unknown module type`, falta agregar una dependencia RTL al comando de compilacion.
+For integrated testbenches, include every RTL file instantiated by the DUT. If an `Unknown module type` error appears, an RTL dependency is missing from the compilation command.
 
-## Agregar o modificar un modulo
+## Add or Modify a Module
 
-Checklist recomendado:
+Recommended checklist:
 
-1. Mantener el modulo sintetizable y parametrizable cuando aplique.
-2. Agregar o actualizar testbench en `tests/`.
-3. Agregar o actualizar doc en `docs/` con descripcion, parametros, puertos y comportamiento.
-4. Verificar que el testbench compile con `iverilog -g2012` u otro simulador usado por el equipo.
-5. Si el cambio afecta top-level, revisar `modules/top/top.v`, `modules/top/cpu_subsystem.v` y `modules/top/top_wrapper.v`.
+1. Keep the module synthesizable and parameterizable when applicable.
+2. Add or update a testbench under `tests/`.
+3. Add or update documentation under `docs/` with description, parameters, ports, and behavior.
+4. Verify that the testbench compiles with `iverilog -g2012` or the simulator used by the team.
+5. If the change affects top-level integration, review `modules/top/top.v`, `modules/top/cpu_subsystem.v`, and `modules/top/top_wrapper.v`.
 
-## FPGA con Vivado
+## FPGA with Vivado
 
-Top de placa:
+Board top-level:
 
 ```text
 modules/top/top_wrapper.v
@@ -110,27 +110,27 @@ Constraints:
 boards/Nexys-4-Master.xdc
 ```
 
-Puntos importantes:
+Important points:
 
-- Generar el IP `clk_wiz_0` en Vivado.
-- Configurar `clk_wiz_0` con entrada 100 MHz y salida 75 MHz.
-- Agregar todos los RTL bajo `modules/` al proyecto Vivado.
-- Setear `top_wrapper` como top.
-- Usar los puertos `clock`, `i_rst`, `i_uart_rx` y `o_uart_tx` definidos en el XDC.
+- Generate the `clk_wiz_0` IP in Vivado.
+- Configure `clk_wiz_0` with a 100 MHz input and a 75 MHz output.
+- Add all RTL files under `modules/` to the Vivado project.
+- Set `top_wrapper` as the top module.
+- Use the `clock`, `i_rst`, `i_uart_rx`, and `o_uart_tx` ports defined in the XDC.
 
-Despues de programar la FPGA:
+After programming the FPGA:
 
-1. Liberar reset fisico.
-2. Abrir el puerto serie a 115200 baudios.
-3. Ejecutar `sync` desde `scripts/debug_client.py`.
-4. Cargar firmware y controlar la CPU desde la shell.
+1. Release the physical reset.
+2. Open the serial port at 115200 baud.
+3. Run `sync` from `scripts/debug_client.py`.
+4. Load firmware and control the CPU from the shell.
 
-## Documentacion por modulo
+## Per-Module Documentation
 
-La documentacion existente cubre los bloques principales:
+Existing documentation covers the main blocks:
 
 - CPU: `modules/cpu/**/docs/*.md`.
 - UART: `modules/uart/**/docs/*.md`.
 - Debug unit: `modules/debug_unit/**/docs/*.md`.
 
-Cuando se agregue un modulo nuevo, seguir el formato usado en esas guias: titulo, proyecto/autores/fecha, descripcion, parametros, puertos, comportamiento, FSM si aplica y notas de diseno.
+When adding a new module, follow the format used in those guides: title, project/authors/date, description, parameters, ports, behavior, FSM when applicable, and design notes.

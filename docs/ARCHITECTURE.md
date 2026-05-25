@@ -1,8 +1,8 @@
-# Arquitectura del Sistema
+# System Architecture
 
-Este documento resume como se integran los bloques principales del proyecto. La documentacion detallada de cada modulo esta en `modules/**/docs`.
+This document summarizes how the main project blocks are integrated. Detailed per-module documentation is available under `modules/**/docs`.
 
-## Vista general
+## Overview
 
 ```text
 Host PC
@@ -21,90 +21,90 @@ top
         `-- debug_unit_top
 ```
 
-El sistema corre con un clock interno de 75 MHz. En FPGA, `top_wrapper` espera un clock de placa de 100 MHz y usa el IP `clk_wiz_0` para generar los 75 MHz usados por el resto del diseno.
+The system runs from an internal 75 MHz clock. On FPGA, `top_wrapper` expects a 100 MHz board clock and uses the `clk_wiz_0` IP to generate the 75 MHz clock used by the rest of the design.
 
-## Capas top-level
+## Top-Level Layers
 
-| Modulo | Ruta | Responsabilidad |
-|--------|------|-----------------|
-| `top_wrapper` | `modules/top/top_wrapper.v` | Wrapper de FPGA, clock wizard, reset combinado y sincronizadores. |
-| `top` | `modules/top/top.v` | UART fisica, FIFOs y conexion con `cpu_subsystem`. |
-| `cpu_subsystem` | `modules/top/cpu_subsystem.v` | Integra CPU y debug unit, arbitra senales compartidas y registra observabilidad. |
-| `cpu_core` | `modules/cpu/hazard/rtl/cpu_core.v` | CPU RV32I pipeline de 5 etapas. |
-| `debug_unit_top` | `modules/debug_unit/top/rtl/debug_unit_top.v` | Subsystem de debug y multiplexado de respuestas UART. |
+| Module | Path | Responsibility |
+|--------|------|----------------|
+| `top_wrapper` | `modules/top/top_wrapper.v` | FPGA wrapper, clock wizard, combined reset, and synchronizers. |
+| `top` | `modules/top/top.v` | Physical UART, FIFOs, and connection to `cpu_subsystem`. |
+| `cpu_subsystem` | `modules/top/cpu_subsystem.v` | Integrates CPU and debug unit, arbitrates shared signals, and registers observability paths. |
+| `cpu_core` | `modules/cpu/hazard/rtl/cpu_core.v` | 5-stage pipelined RV32I CPU. |
+| `debug_unit_top` | `modules/debug_unit/top/rtl/debug_unit_top.v` | Debug subsystem and UART response multiplexing. |
 
 ## CPU
 
-`cpu_core` implementa una CPU RV32I con pipeline de 5 etapas:
+`cpu_core` implements an RV32I CPU with 5 pipeline stages:
 
-| Etapa | Funcion principal |
-|-------|-------------------|
-| IF | PC, lectura de IMEM y calculo de `PC + 4`. |
-| ID | Decode, regfile, immediate generator, jumps, branches y forwarding de ID. |
-| EX | ALU, ALU control y forwarding de EX. |
-| MEM | Acceso a DMEM y forwarding de store data. |
-| WB | Seleccion de writeback hacia register file. |
+| Stage | Main Function |
+|-------|---------------|
+| IF | PC, IMEM read, and `PC + 4` calculation. |
+| ID | Decode, register file, immediate generator, jumps, branches, and ID forwarding. |
+| EX | ALU, ALU control, and EX forwarding. |
+| MEM | DMEM access and store-data forwarding. |
+| WB | Writeback selection into the register file. |
 
-La CPU tiene manejo de hazards:
+The CPU includes hazard handling:
 
-- Load-use stall con `hazard_detection_unit`.
-- Forwarding en ID para branches y JALR.
-- Forwarding en EX para operandos de ALU.
-- Forwarding en MEM para datos de store.
-- Flush de IF/ID para branches tomados y jumps.
+- Load-use stall with `hazard_detection_unit`.
+- ID forwarding for branches and JALR.
+- EX forwarding for ALU operands.
+- MEM forwarding for store data.
+- IF/ID flush for taken branches and jumps.
 
-## Memorias
+## Memories
 
-La memoria de instrucciones y la memoria de datos usan `block_ram`.
+Instruction memory and data memory use `block_ram`.
 
-| Memoria | Parametro default | Capacidad default | Acceso CPU | Acceso debug |
-|---------|-------------------|-------------------|------------|--------------|
-| IMEM | `IMEM_ADDR_WIDTH = 10` | 1024 palabras de 32 bits | Lectura de instrucciones | Escritura para carga de firmware |
-| DMEM | `DMEM_ADDR_WIDTH = 10` | 1024 palabras de 32 bits | Load/store | Lectura por debug |
+| Memory | Default Parameter | Default Capacity | CPU Access | Debug Access |
+|--------|-------------------|------------------|------------|--------------|
+| IMEM | `IMEM_ADDR_WIDTH = 10` | 1024 32-bit words | Instruction reads | Firmware-load writes |
+| DMEM | `DMEM_ADDR_WIDTH = 10` | 1024 32-bit words | Load/store | Debug reads |
 
-La unidad de debug usa `NB_ADDR = 8` por defecto. `cpu_subsystem` extiende esa direccion a los anchos internos de IMEM/DMEM, por lo que el host accede por defecto a las primeras 256 palabras.
+The debug unit uses `NB_ADDR = 8` by default. `cpu_subsystem` extends that address to the internal IMEM/DMEM widths, so the host can access the first 256 words by default.
 
 ## Debug Unit
 
-La debug unit recibe comandos desde UART y controla la CPU sin requerir un debugger externo JTAG.
+The debug unit receives commands over UART and controls the CPU without requiring an external JTAG debugger.
 
-Funciones principales:
+Main features:
 
-- Cargar firmware en IMEM.
-- Ejecutar, detener y resetear la CPU.
-- Ejecutar una cantidad configurable de ciclos de pipeline.
-- Leer registros individuales o hacer dump completo de PC + registros.
-- Leer memoria de datos.
-- Configurar y borrar breakpoints por PC.
-- Serializar registros de pipeline mediante `du_latch_tx`.
+- Load firmware into IMEM.
+- Run, halt, and reset the CPU.
+- Execute a configurable number of pipeline cycles.
+- Read individual registers or dump PC + all registers.
+- Read data memory.
+- Set and clear PC breakpoints.
+- Serialize pipeline registers through `du_latch_tx`.
 
-`cpu_subsystem` registra senales de observabilidad de CPU antes de entregarlas a `debug_unit_top` para ayudar a timing closure. Cuando la debug unit necesita inspeccionar estado, mantiene la CPU detenida mediante `o_cpu_enable`.
+`cpu_subsystem` registers CPU observability signals before forwarding them to `debug_unit_top` to help timing closure. When the debug unit needs to inspect state, it keeps the CPU halted through `o_cpu_enable`.
 
 ## UART
 
-El enlace host-FPGA usa UART 115200 8N1 por defecto.
+The host-FPGA link uses UART 115200 8N1 by default.
 
-Flujo RX:
+RX flow:
 
 ```text
 i_uart_rx -> uart_rx -> RX FIFO -> debug_unit_top
 ```
 
-Flujo TX:
+TX flow:
 
 ```text
 debug_unit_top -> TX FIFO -> uart_tx -> o_uart_tx
 ```
 
-`debug_unit_top` OR-gatea varias fuentes TX internas. Esto es seguro porque `du_master` asegura exclusion mutua: solo un transmisor de debug esta activo por vez.
+`debug_unit_top` OR-gates several internal TX sources. This is safe because `du_master` guarantees mutual exclusion: only one debug transmitter is active at a time.
 
 ## FPGA
 
-La placa objetivo documentada es Nexys 4. El archivo `boards/Nexys-4-Master.xdc` define:
+The documented target board is Nexys 4. `boards/Nexys-4-Master.xdc` defines:
 
-| Puerto | Pin | Uso |
-|--------|-----|-----|
-| `clock` | `E3` | Clock de placa 100 MHz. |
-| `i_rst` | `U9` | Reset fisico activo alto. |
-| `i_uart_rx` | `C4` | RX desde USB-UART. |
-| `o_uart_tx` | `D4` | TX hacia USB-UART. |
+| Port | Pin | Use |
+|------|-----|-----|
+| `clock` | `E3` | 100 MHz board clock. |
+| `i_rst` | `U9` | Active-high physical reset. |
+| `i_uart_rx` | `C4` | RX from USB-UART. |
+| `o_uart_tx` | `D4` | TX to USB-UART. |

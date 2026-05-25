@@ -1,16 +1,16 @@
-# Protocolo de Debug UART
+# UART Debug Protocol
 
-La debug unit usa frames binarios simples sobre UART 115200 8N1. Todos los campos multi-byte se transmiten little-endian.
+The debug unit uses simple binary frames over UART 115200 8N1. All multi-byte fields are transmitted little-endian.
 
-## Frame de comando
+## Command Frame
 
-Cada comando normal enviado desde el host tiene 6 bytes:
+Each normal command sent by the host has 6 bytes:
 
-| Byte | Campo | Descripcion |
+| Byte | Field | Description |
 |------|-------|-------------|
-| 0 | `opcode` | Codigo de comando. |
-| 1..4 | `payload` | Entero de 32 bits little-endian. |
-| 5 | `checksum` | XOR de bytes 0..4. |
+| 0 | `opcode` | Command code. |
+| 1..4 | `payload` | 32-bit little-endian integer. |
+| 5 | `checksum` | XOR of bytes 0..4. |
 
 Checksum:
 
@@ -18,102 +18,102 @@ Checksum:
 checksum = opcode ^ payload[7:0] ^ payload[15:8] ^ payload[23:16] ^ payload[31:24]
 ```
 
-## Frame de respuesta
+## Response Frame
 
-Las respuestas normales tienen 5 bytes:
+Normal responses have 5 bytes:
 
-| Byte | Campo | Descripcion |
+| Byte | Field | Description |
 |------|-------|-------------|
 | 0 | `status` | `0x00` OK, `0x01` ERROR, `0x02` BUSY. |
-| 1..4 | `data` | Entero de 32 bits little-endian. |
+| 1..4 | `data` | 32-bit little-endian integer. |
 
-Algunos comandos de dump envian primero un stream de bytes de datos y luego una respuesta normal de 5 bytes.
+Some dump commands first send a data byte stream and then a normal 5-byte response.
 
-## Comandos
+## Commands
 
-| Opcode | Nombre | Payload | Respuesta / stream |
-|--------|--------|---------|--------------------|
-| `0x01` | `LOAD_FW` | Ignorado en el frame inicial | Secuencia especial de carga, luego respuesta OK/ERROR. |
-| `0x02` | `RUN` | Ignorado | Inicia CPU; respuesta normal con data `0`. |
-| `0x03` | `STEP` | Cantidad de ciclos de pipeline; `0` equivale a `1` | Respuesta con PC al finalizar. |
-| `0x04` | `HALT` | Ignorado | Detiene CPU; respuesta con PC actual. |
-| `0x05` | `READ_REG` | Registro `0..31`, o `0xFF` para dump | Registro leido, o stream de 132 bytes + respuesta. |
-| `0x06` | `READ_MEM` | Direccion de palabra, o `0xFFFFFFFF` para dump | Palabra leida, o stream de DMEM + respuesta. |
-| `0x07` | `WRITE_REG` | Registro destino | Existe en RTL de debug, no conectado a nivel sistema actual. |
-| `0x08` | `WRITE_MEM` | Direccion destino | Existe en RTL de debug, no conectado a nivel sistema actual. |
-| `0x09` | `SET_BKP` | PC del breakpoint | Respuesta normal. |
-| `0x0A` | `CLR_BKP` | PC del breakpoint | Respuesta normal. |
-| `0x0B` | `RESET` | Ignorado | Pulso de reset de CPU; respuesta normal. |
-| `0x0F` | `STATUS` | Ignorado | Bits de estado en `data`. |
-| `0x10` | `READ_LATCH` | Ignorado | Stream de 45 bytes con registros de pipeline + respuesta. |
+| Opcode | Name | Payload | Response / Stream |
+|--------|------|---------|-------------------|
+| `0x01` | `LOAD_FW` | Ignored in the initial frame | Special load sequence, then OK/ERROR response. |
+| `0x02` | `RUN` | Ignored | Starts CPU; normal response with data `0`. |
+| `0x03` | `STEP` | Number of pipeline cycles; `0` means `1` | Response with PC when done. |
+| `0x04` | `HALT` | Ignored | Stops CPU; response with current PC. |
+| `0x05` | `READ_REG` | Register `0..31`, or `0xFF` for dump | Register value, or 132-byte stream + response. |
+| `0x06` | `READ_MEM` | Word address, or `0xFFFFFFFF` for dump | Memory word, or DMEM stream + response. |
+| `0x07` | `WRITE_REG` | Destination register | Exists in debug RTL, not connected at current system level. |
+| `0x08` | `WRITE_MEM` | Destination address | Exists in debug RTL, not connected at current system level. |
+| `0x09` | `SET_BKP` | Breakpoint PC | Normal response. |
+| `0x0A` | `CLR_BKP` | Breakpoint PC | Normal response. |
+| `0x0B` | `RESET` | Ignored | CPU reset pulse; normal response. |
+| `0x0F` | `STATUS` | Ignored | Status bits in `data`. |
+| `0x10` | `READ_LATCH` | Ignored | 45-byte stream with pipeline registers + response. |
 
 ## LOAD_FW
 
-`LOAD_FW` no usa solo el frame normal. La secuencia completa es:
+`LOAD_FW` does not use only the normal frame. The full sequence is:
 
-1. Host envia frame de comando `CMD_LOAD_FW` con payload `0`.
-2. Host envia `N` como entero de 32 bits little-endian, donde `N` es la cantidad de instrucciones.
-3. Host envia `N` instrucciones RV32I de 32 bits, cada una little-endian.
-4. FPGA responde con frame normal de 5 bytes.
+1. Host sends a `CMD_LOAD_FW` command frame with payload `0`.
+2. Host sends `N` as a 32-bit little-endian integer, where `N` is the instruction count.
+3. Host sends `N` 32-bit RV32I instructions, each little-endian.
+4. FPGA responds with a normal 5-byte frame.
 
-Los clientes Python agregan por defecto una instruccion especial de halt al final del firmware:
+The Python clients append a special halt instruction to the firmware by default:
 
 ```text
 HALT_INST = 0x1A1A1A1A
 ```
 
-Cuando la CPU ejecuta esa palabra, `du_master` detiene la ejecucion y marca la CPU como halted.
+When the CPU executes that word, `du_master` stops execution and marks the CPU as halted.
 
 ## STATUS
 
-`CMD_STATUS` devuelve los flags de estado en `data`:
+`CMD_STATUS` returns status flags in `data`:
 
-| Bit | Nombre | Significado |
-|-----|--------|-------------|
-| 0 | `running` | CPU corriendo. |
-| 1 | `halted` | CPU detenida. |
-| 2 | `bkp_hit` | Se alcanzo un breakpoint. |
-| 31..3 | Reservado | Actualmente `0`. |
+| Bit | Name | Meaning |
+|-----|------|---------|
+| 0 | `running` | CPU is running. |
+| 1 | `halted` | CPU is halted. |
+| 2 | `bkp_hit` | A breakpoint was reached. |
+| 31..3 | Reserved | Currently `0`. |
 
 ## Dumps
 
-### READ_REG con payload `0xFF`
+### READ_REG with payload `0xFF`
 
-El hardware transmite 132 bytes y despues una respuesta normal:
+Hardware transmits 132 bytes and then a normal response:
 
-| Bytes | Contenido |
-|-------|-----------|
-| `0..3` | PC actual, little-endian. |
-| `4..131` | Registros `x0..x31`, 4 bytes cada uno, little-endian. |
+| Bytes | Contents |
+|-------|----------|
+| `0..3` | Current PC, little-endian. |
+| `4..131` | Registers `x0..x31`, 4 bytes each, little-endian. |
 
-`scripts/debug_client.py` implementa este flujo con el comando interactivo `rr 255` o `rr 0xFF`.
+`scripts/debug_client.py` implements this flow with the interactive command `rr 255` or `rr 0xFF`.
 
-### READ_MEM con payload `0xFFFFFFFF`
+### READ_MEM with payload `0xFFFFFFFF`
 
-El RTL soporta dump secuencial de DMEM. El tamano del stream es `2^NB_ADDR * 4` bytes, seguido por respuesta normal. Con `NB_ADDR = 8`, el stream es de 1024 bytes.
+The RTL supports a sequential DMEM dump. The stream size is `2^NB_ADDR * 4` bytes, followed by a normal response. With `NB_ADDR = 8`, the stream is 1024 bytes.
 
-La shell Python actual expone lectura de una palabra con `rm <addr>`; no expone un comando de dump completo.
+The current Python shell exposes single-word reads with `rm <addr>`; it does not expose a full-dump command.
 
 ### READ_LATCH
 
-`READ_LATCH` transmite 45 bytes con el estado de los registros IF/ID, ID/EX, EX/MEM y MEM/WB, seguido por respuesta normal. El layout exacto esta documentado en `modules/debug_unit/communication/docs/Pipeline Latch Transmitter.md`.
+`READ_LATCH` transmits 45 bytes with IF/ID, ID/EX, EX/MEM, and MEM/WB register state, followed by a normal response. The exact layout is documented in `modules/debug_unit/communication/docs/Pipeline Latch Transmitter.md`.
 
-## Herramientas host
+## Host Tools
 
-Shell interactiva Linux/macOS:
+Interactive shell for Linux/macOS:
 
 ```bash
 python3 scripts/debug_client.py /dev/ttyUSB0 115200
 ```
 
-Carga directa en Windows:
+Direct loader for Windows:
 
 ```bash
 python scripts/load_program_windows.py COM3 115200 code/bin/test_program.bin
 ```
 
-## Limitaciones actuales
+## Current Limitations
 
-- `WRITE_REG` y `WRITE_MEM` no deben usarse a nivel sistema hasta conectar arbitraje de escritura en `cpu_core`.
-- No hay byte de start-of-frame. Si el enlace queda desfasado, usar `sync` en la shell para limpiar buffers y verificar `CMD_STATUS`.
-- `STEP` avanza ciclos de pipeline, no instrucciones arquitecturales completas.
+- `WRITE_REG` and `WRITE_MEM` should not be used at system level until write arbitration is connected in `cpu_core`.
+- There is no start-of-frame byte. If the link gets misaligned, use `sync` in the shell to clear buffers and verify `CMD_STATUS`.
+- `STEP` advances pipeline cycles, not complete architectural instructions.

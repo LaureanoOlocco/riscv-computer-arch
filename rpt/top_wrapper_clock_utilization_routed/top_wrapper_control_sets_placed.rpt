@@ -1,0 +1,184 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.1 (win64) Build 6140274 Thu May 22 00:12:29 MDT 2025
+| Date         : Sun May 17 20:54:49 2026
+| Host         : Sofia running 64-bit major release  (build 9200)
+| Command      : report_control_sets -verbose -file top_wrapper_control_sets_placed.rpt
+| Design       : top_wrapper
+| Device       : xc7a100t
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Control Set Information
+
+Table of Contents
+-----------------
+1. Summary
+2. Histogram
+3. Flip-Flop Distribution
+4. Detailed Control Set Information
+
+1. Summary
+----------
+
++----------------------------------------------------------+-------+
+|                          Status                          | Count |
++----------------------------------------------------------+-------+
+| Total control sets                                       |   106 |
+|    Minimum number of control sets                        |   106 |
+|    Addition due to synthesis replication                 |     0 |
+|    Addition due to physical synthesis replication        |     0 |
+| Unused register locations in slices containing registers |    79 |
++----------------------------------------------------------+-------+
+* Control sets can be merged at opt_design using control_set_merge or merge_equivalent_drivers
+** Run report_qor_suggestions for automated merging and remapping suggestions
+
+
+2. Histogram
+------------
+
++--------------------+-------+
+|       Fanout       | Count |
++--------------------+-------+
+| Total control sets |   106 |
+| >= 0 to < 4        |     0 |
+| >= 4 to < 6        |     8 |
+| >= 6 to < 8        |     1 |
+| >= 8 to < 10       |    50 |
+| >= 10 to < 12      |     0 |
+| >= 12 to < 14      |     0 |
+| >= 14 to < 16      |     0 |
+| >= 16              |    47 |
++--------------------+-------+
+* Control sets can be remapped at either synth_design or opt_design
+
+
+3. Flip-Flop Distribution
+-------------------------
+
++--------------+-----------------------+------------------------+-----------------+--------------+
+| Clock Enable | Synchronous Set/Reset | Asynchronous Set/Reset | Total Registers | Total Slices |
++--------------+-----------------------+------------------------+-----------------+--------------+
+| No           | No                    | No                     |               9 |            5 |
+| No           | No                    | Yes                    |              25 |           10 |
+| No           | Yes                   | No                     |             510 |          132 |
+| Yes          | No                    | No                     |             149 |           66 |
+| Yes          | No                    | Yes                    |             296 |           99 |
+| Yes          | Yes                   | No                     |            1716 |          586 |
++--------------+-----------------------+------------------------+-----------------+--------------+
+
+
+4. Detailed Control Set Information
+-----------------------------------
+
++-------------------------+-----------------------------------------------------------------------------+-------------------------------------------------------------+------------------+----------------+--------------+
+|       Clock Signal      |                                Enable Signal                                |                       Set/Reset Signal                      | Slice Load Count | Bel Load Count | Bels / Slice |
++-------------------------+-----------------------------------------------------------------------------+-------------------------------------------------------------+------------------+----------------+--------------+
+|  clk_inst/inst/clk_out1 | u_top/u_uart_rx/sample_next                                                 | u_synchronizer_rst/Q[0]                                     |                1 |              4 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/wr_ptr[3]_i_1__0_n_0                                        | u_synchronizer_rst/Q[0]                                     |                1 |              4 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/rx_done_pulse_r_reg_1[0]                 | u_synchronizer_rst/Q[0]                                     |                1 |              4 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/wr_ptr[3]_i_1_n_0                                           | u_synchronizer_rst/Q[0]                                     |                1 |              4 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_uart_tx/sample_next                                                 | u_synchronizer_rst/Q[0]                                     |                2 |              4 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_uart_tx/E[0]                                                        | u_synchronizer_rst/Q[0]                                     |                2 |              4 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/state_reg[3]_i_1__1_n_0    | u_synchronizer_rst/Q[0]                                     |                2 |              4 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_regfile_tx/state_reg[3]_i_1__0_n_0     | u_synchronizer_rst/Q[0]                                     |                1 |              4 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_latch_tx/byte_cnt_next                 | u_synchronizer_rst/Q[0]                                     |                4 |              6 |         1.50 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[9][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                8 |              8 |         1.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[6][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                4 |              8 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[14][7]_i_1_n_0                                  | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_uart_rx/bits_next                                                   | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[3][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[7][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                6 |              8 |         1.33 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[2][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[5][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer                                                 | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[12][7]_i_1_n_0                                  | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[0][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[10][7]_i_1_n_0                                  | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[11][7]_i_1_n_0                                  | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[1][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                4 |              8 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[3][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[5][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[9][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                5 |              8 |         1.60 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[11][7]_i_1__0_n_0                               | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[1][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[6][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[13][7]_i_1__0_n_0                               | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[8][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[4][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[14][7]_i_1__0_n_0                               | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[10][7]_i_1__0_n_0                               | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer                                                 | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[12][7]_i_1__0_n_0                               | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[7][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                4 |              8 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[2][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_uart_tx/shifter_next                                                | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[8][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                7 |              8 |         1.14 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/size_reg[31]_i_1_n_0       | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_tx_fifo/fifo_buffer[0][7]_i_1__0_n_0                                | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/mem_addr_next              | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/size_reg[15]_i_1_n_0       | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[4][7]_i_1_n_0                                   | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/size_reg[7]_i_1_n_0        | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/word_next[23]              | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/word_next[15]              | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/word_next[7]               | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/word_next[31]              | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_rx_fifo/fifo_buffer[13][7]_i_1_n_0                                  | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_imem_loader/size_reg[23]_i_1_n_0       | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/frame_reg[2][7]_i_1_n_0         | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/frame_reg[3][7]_i_1_n_0         | u_synchronizer_rst/Q[0]                                     |                1 |              8 |         8.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/frame_next                      | u_synchronizer_rst/Q[0]                                     |                3 |              8 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/frame_reg[4][7]_i_1_n_0         | u_synchronizer_rst/Q[0]                                     |                4 |              8 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/frame_reg[1][7]_i_1_n_0         | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/frame_reg[5][7]_i_1_n_0         | u_synchronizer_rst/Q[0]                                     |                2 |              8 |         4.00 |
+|  clk_inst/inst/clk_out1 |                                                                             |                                                             |                5 |              9 |         1.80 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/state_reg[16]_i_1_n_0           | u_synchronizer_rst/Q[0]                                     |                7 |             17 |         2.43 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_8[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_0[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               12 |             32 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_1[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               10 |             32 |         3.20 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_4[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               15 |             32 |         2.13 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[3]_3[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_2[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[3]_4[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               19 |             32 |         1.68 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_3[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |                9 |             32 |         3.56 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_3[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               10 |             32 |         3.20 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_6[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               14 |             32 |         2.29 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_2[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |                9 |             32 |         3.56 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_6[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               14 |             32 |         2.29 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_0[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[4]_0[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |                8 |             32 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[3]_2[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[3]_5[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               16 |             32 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_4[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               13 |             32 |         2.46 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_1[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |                9 |             32 |         3.56 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_5[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               12 |             32 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[3]_0[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               16 |             32 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[3]_1[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               13 |             32 |         2.46 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[1]_5[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               16 |             32 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[2]_4[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               12 |             32 |         2.67 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[4]_1[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[4]_2[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               16 |             32 |         2.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/E[0]                              | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               13 |             32 |         2.46 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_3[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |                5 |             32 |         6.40 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_5[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               20 |             32 |         1.60 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_6[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               10 |             32 |         3.20 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/memwb_en                        | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |                8 |             32 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_2[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               11 |             32 |         2.91 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/step_cnt_reg[31]_i_1_n_0        | u_synchronizer_rst/Q[0]                                     |               15 |             32 |         2.13 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/E[0]                            | u_synchronizer_rst/Q[0]                                     |                8 |             32 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/cmd_opcode_reg_reg[3]_2[0]      | u_synchronizer_rst/Q[0]                                     |                9 |             32 |         3.56 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/cmd_opcode_reg_reg[3]_3[0]      | u_synchronizer_rst/Q[0]                                     |                8 |             32 |         4.00 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_cpu_core/u_mem_wb/rd_addr_out_reg[0]_7[0]           | u_top/u_cpu_subsystem/u_debug_unit/u_master/SR[0]           |               13 |             32 |         2.46 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_breakpoint/bkp_addr_reg[1][31]_i_1_n_0 | u_synchronizer_rst/Q[0]                                     |                7 |             32 |         4.57 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_resp_builder/status_next               | u_synchronizer_rst/Q[0]                                     |               14 |             33 |         2.36 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/resp_status_reg[0]_i_1_n_0      | u_synchronizer_rst/Q[0]                                     |               12 |             33 |         2.75 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_regfile_tx/rx_data_next                | u_synchronizer_rst/Q[0]                                     |               10 |             37 |         3.70 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_dmem_tx/rx_data_next                   | u_synchronizer_rst/Q[0]                                     |                9 |             40 |         4.44 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/next_state__0[3]                | u_synchronizer_rst/Q[0]                                     |               13 |             40 |         3.08 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/memwb_en                        | u_top/u_cpu_subsystem/u_cpu_core/u_if_id/pc_out[31]_i_1_n_0 |               12 |             69 |         5.75 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/cpu_running_reg_reg_0           | u_top/u_cpu_subsystem/u_cpu_core/u_if_id/SR[0]              |               37 |            129 |         3.49 |
+|  clk_inst/inst/clk_out1 | u_top/u_cpu_subsystem/u_debug_unit/u_master/memwb_en                        |                                                             |               66 |            149 |         2.26 |
+|  clk_inst/inst/clk_out1 |                                                                             | u_synchronizer_rst/Q[0]                                     |              142 |            535 |         3.77 |
++-------------------------+-----------------------------------------------------------------------------+-------------------------------------------------------------+------------------+----------------+--------------+
+
+

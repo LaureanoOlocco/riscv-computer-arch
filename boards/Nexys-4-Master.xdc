@@ -1,7 +1,25 @@
 ## Clock signal - 100MHz
 set_property PACKAGE_PIN E3 [get_ports clock]
 set_property IOSTANDARD LVCMOS33 [get_ports clock]
-create_clock -add -name sys_clk_pin -period 10.000 -waveform {0 5.000} [get_ports clock]
+
+# Removed -add flag: using -add left the MMCM IP's auto-generated "clock"
+# definition coexisting with "sys_clk_pin" on the same port, causing 2711
+# registers to appear with multiple_clock and triggering TIMING-6.
+# A single definition here overrides any IP-generated create_clock.
+create_clock -name sys_clk_pin -period 10.000 -waveform {0 5.000} [get_ports clock]
+
+# TIMING-56: the MMCM generates two logical names from the same output pin
+# (clk_out1_clk_wiz_0 / clk_out1_clk_wiz_0_1 and their feedback copies).
+# Declare them physically exclusive so STA does not analyze cross-domain
+# paths between names that share the same physical net.
+set_clock_groups -physically_exclusive \
+    -group [get_clocks clk_out1_clk_wiz_0] \
+    -group [get_clocks clk_out1_clk_wiz_0_1]
+
+set_clock_groups -physically_exclusive \
+    -group [get_clocks clkfbout_clk_wiz_0] \
+    -group [get_clocks clkfbout_clk_wiz_0_1]
+
 set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets clk_inst/inst/clk_in1_clk_wiz_0]
 
 ## Reset - BTN0 (boton izquierdo)

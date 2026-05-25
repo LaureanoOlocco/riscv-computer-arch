@@ -104,6 +104,27 @@ module cpu_subsystem
     wire [4               : 0]      cpu_memwb_rd_addr     ;
 
     // =====================================================================
+    // DU → CPU pipeline register (timing closure for critical path)
+    // The DU master's state_reg drives du_regfile_rd combinationally.
+    // Without this register the path crosses 16 logic levels:
+    // DU state → regfile mux → MEM/WB forwarding → PC adder → PC reg.
+    // Registering here cuts that chain in half. read_delay_reg in du_master
+    // is incremented by 1 to compensate (see du_master.v S_READ_REG/MEM).
+    // =====================================================================
+    reg                     du_regfile_rd_r   ;
+    reg [4 : 0]             du_regfile_raddr_r;
+
+    always @(posedge clk) begin
+        if (i_rst) begin
+            du_regfile_rd_r    <= 1'b0 ;
+            du_regfile_raddr_r <= 5'b0 ;
+        end else begin
+            du_regfile_rd_r    <= du_regfile_rd    ;
+            du_regfile_raddr_r <= du_regfile_raddr ;
+        end
+    end
+
+    // =====================================================================
     // Signal Buffering (1-cycle register for timing closure)
     // Pipeline-latch signals are also buffered to break long combinational
     // paths between cpu_core internal FFs and du_latch_tx FFs through two
@@ -231,9 +252,9 @@ module cpu_subsystem
         .i_imem_waddr   ({{(IMEM_ADDR_WIDTH - NB_ADDR){1'b0}}, du_imem_waddr}),
         .i_imem_wen     (du_imem_wr),
 
-        // DU → Regfile read
-        .i_du_rgfile_rd (du_regfile_rd),
-        .i_regfile_addr (du_regfile_raddr),
+        // DU → Regfile read (registered — see pipeline register above)
+        .i_du_rgfile_rd (du_regfile_rd_r),
+        .i_regfile_addr (du_regfile_raddr_r),
 
         // DU → DMEM read
         .i_dmem_raddr   ({{(DMEM_ADDR_WIDTH - NB_ADDR){1'b0}}, du_dmem_raddr}),

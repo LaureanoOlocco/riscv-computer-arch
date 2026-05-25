@@ -513,7 +513,9 @@ module du_master
                 o_regfile_raddr = cmd_payload_reg[4 : 0];
                 read_delay_next = read_delay_reg + 1'b1;
 
-                if (read_delay_reg == 2'd2) begin
+                // Extra cycle accounts for the pipeline register inserted in
+                // cpu_subsystem between du_regfile_rd and i_du_rgfile_rd.
+                if (read_delay_reg == 2'd3) begin
                     resp_status_next = STATUS_OK;
                     resp_data_next   = i_regfile_data;
                 end
@@ -525,7 +527,8 @@ module du_master
                 o_mem_raddr  = cmd_payload_reg[NB_ADDR - 1 : 0];
                 read_delay_next = read_delay_reg + 1'b1;
 
-                if (read_delay_reg == 2'd2) begin
+                // Same adjustment as S_READ_REG.
+                if (read_delay_reg == 2'd3) begin
                     resp_status_next = STATUS_OK;
                     resp_data_next   = i_mem_data;
                 end

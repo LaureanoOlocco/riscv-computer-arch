@@ -1,0 +1,17 @@
+# Simulation outputs
+*.vcd
+*.vvp
+
+# Build artifacts
+build/
+
+# Legacy ALU TP scripts (not part of this project)
+interfaz.py
+script.py
+
+# Images
+img/
+
+# Python cache
+__pycache__/
+*.pyc

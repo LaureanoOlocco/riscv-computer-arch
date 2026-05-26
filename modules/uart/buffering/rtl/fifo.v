@@ -31,7 +31,7 @@ module fifo
     reg                                                                         full_next                       ;
     reg                                                                         empty_flag                      ;
     reg                                                                         empty_next                      ;
-    reg [NB_DATA-1:0] data_out_reg;
+    reg         [NB_DATA                                               - 1 : 0] data_out_reg                    ;
 
 
     wire                                                                        wr_en                           ;
@@ -41,11 +41,11 @@ module fifo
     begin
     if (i_rst)
      begin
-        data_out_reg <= {NB_DATA{1'b0}};
+        data_out_reg <= {NB_DATA{1'b0}}                                                                         ;
     end 
     else if (i_rd && ~empty_flag) 
         begin
-         data_out_reg <= fifo_buffer[rd_ptr];
+         data_out_reg <= fifo_buffer[rd_ptr]                                                                    ;
         end
     end
 

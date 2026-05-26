@@ -8,596 +8,721 @@
 //                - Dispatches to loaders/tx/rx/breakpoint control and CPU run/step/halt/reset.
 //                - Builds 5-byte responses (status + 32-bit data) via du_resp_builder.
 //--------------------------------------------------------------------------------------------------
+`default_nettype none
 
 module du_master
 #(
-    parameter NB_UART_DATA  = 8,   // NB of UART data
-    parameter NB_DATA       = 32,  // NB of data width
-    parameter NB_ADDR       = 8,   // NB of memory address width
-    parameter NB_STATE      = 17,  // NB of FSM states (one-hot)
-    parameter NB_STEP_CNT   = 32,  // NB of step counter
-    parameter HALT_INST     = 32'h1A1A1A1A  // Halt instruction
-) (
-    // Outputs — CPU control
-    output reg                         o_cpu_enable        ,  // CPU pipeline enable
-    output reg                         o_cpu_reset         ,  // CPU reset pulse
-    output reg                         o_imem_loader_start ,  // Start du_imem_loader
-    output reg                         o_regfile_tx_start  ,  // Start du_regfile_tx (full dump)
-    output reg                         o_dmem_tx_start     ,  // Start du_dmem_tx
-    output reg                         o_latch_tx_start    ,  // Start du_latch_tx
-    output reg                         o_regfile_rd        ,  // Register file read enable
-    output reg [4 : 0]                 o_regfile_raddr     ,  // Register file read address
-    output reg                         o_regfile_rx_start  ,  // Start du_regfile_rx
-    output reg [4 : 0]                 o_regfile_rx_addr   ,  // Register write address
-    output reg                         o_dmem_rx_start     ,  // Start du_dmem_rx
-    output reg [NB_DATA - 1 : 0]       o_dmem_rx_addr      ,  // Memory write address
-    output reg                         o_mem_rd            ,  // Memory read enable
-    output reg [NB_ADDR - 1 : 0]       o_mem_raddr         ,  // Memory read address
-    output reg                         o_bkp_set           ,  // Set breakpoint
-    output reg                         o_bkp_clr           ,  // Clear breakpoint
-    output reg [NB_DATA - 1 : 0]       o_bkp_addr          ,  // Breakpoint address
-    output reg                         o_resp_valid        ,  // Response valid pulse
-    output reg [NB_UART_DATA - 1 : 0]  o_resp_status       ,  // Response status byte
-    output reg [NB_DATA - 1 : 0]       o_resp_data         ,  // Response data
-    
-    input wire                         i_imem_loader_done  ,  // du_imem_loader done
-    input wire                         i_regfile_tx_done   ,  // du_regfile_tx done
-    input wire                         i_dmem_tx_done      ,  // du_dmem_tx done
-    input wire                         i_latch_tx_done     ,  // du_latch_tx done
-    input wire                         i_regfile_rx_done   ,  // du_regfile_rx done
-    input wire                         i_dmem_rx_done      ,  // du_dmem_rx done
-    input wire [NB_DATA - 1 : 0]       i_pc                ,  // Current PC
-    input wire [NB_DATA - 1 : 0]       i_instruction       ,  // Current instruction
-    input wire [NB_DATA - 1 : 0]       i_regfile_data      ,  // Register read data
-    input wire [NB_DATA - 1 : 0]       i_mem_data          ,  // Memory read data
-    input wire                         i_bkp_hit           ,  // Breakpoint hit signal
-    input wire                         i_rx_done           ,  // UART RX byte received
-    input wire [NB_UART_DATA - 1 : 0]  i_rx_data           ,  // UART RX data byte
-    input wire                         i_tx_fifo_empty     ,  // UART TX FIFO drained
-    input wire                         i_rst               ,
-    input wire                         clk
-);
+//----------------------------------------- PARAMETERS --------------------------------------------//
+  parameter                                                     NB_UART_DATA  = 8                   ,  // NB of UART data
+  parameter                                                     NB_DATA       = 32                  ,  // NB of data width
+  parameter                                                     NB_ADDR       = 8                   ,  // NB of memory address width
+  parameter                                                     NB_STATE      = 17                  ,  // NB of FSM states (one-hot)
+  parameter                                                     NB_STEP_CNT   = 32                  ,  // NB of step counter
+  parameter [NB_DATA                              - 1 : 0]      HALT_INST     = 32'h1A1A1A1A         // Halt instruction
+)
+(
+//------------------------------------------ OUTPUTS ---------------------------------------------//
+  output reg                                                    o_cpu_enable                        ,  // CPU pipeline enable
+  output reg                                                    o_cpu_reset                         ,  // CPU reset pulse
+  output reg                                                    o_imem_loader_start                 ,  // Start du_imem_loader
+  output reg                                                    o_regfile_tx_start                  ,  // Start du_regfile_tx (full dump)
+  output reg                                                    o_dmem_tx_start                     ,  // Start du_dmem_tx
+  output reg                                                    o_latch_tx_start                    ,  // Start du_latch_tx
+  output reg                                                    o_regfile_rd                        ,  // Register file read enable
+  output reg  [4                                      : 0]      o_regfile_raddr                     ,  // Register file read address
+  output reg                                                    o_regfile_rx_start                  ,  // Start du_regfile_rx
+  output reg  [4                                      : 0]      o_regfile_rx_addr                   ,  // Register write address
+  output reg                                                    o_dmem_rx_start                     ,  // Start du_dmem_rx
+  output reg  [NB_DATA                            - 1 : 0]      o_dmem_rx_addr                      ,  // Memory write address
+  output reg                                                    o_mem_rd                            ,  // Memory read enable
+  output reg  [NB_ADDR                            - 1 : 0]      o_mem_raddr                         ,  // Memory read address
+  output reg                                                    o_bkp_set                           ,  // Set breakpoint
+  output reg                                                    o_bkp_clr                           ,  // Clear breakpoint
+  output reg  [NB_DATA                            - 1 : 0]      o_bkp_addr                          ,  // Breakpoint address
+  output reg                                                    o_resp_valid                        ,  // Response valid pulse
+  output reg  [NB_UART_DATA                       - 1 : 0]      o_resp_status                       ,  // Response status byte
+  output reg  [NB_DATA                            - 1 : 0]      o_resp_data                         ,  // Response data
+//------------------------------------------- INPUTS --------------------------------------------   -//
+  input  wire                                                   i_imem_loader_done                  ,  // du_imem_loader done
+  input  wire                                                   i_regfile_tx_done                   ,  // du_regfile_tx done
+  input  wire                                                   i_dmem_tx_done                      ,  // du_dmem_tx done
+  input  wire                                                   i_latch_tx_done                     ,  // du_latch_tx done
+  input  wire                                                   i_regfile_rx_done                   ,  // du_regfile_rx done
+  input  wire                                                   i_dmem_rx_done                      ,  // du_dmem_rx done
+  input  wire [NB_DATA                            - 1 : 0]      i_pc                                ,  // Current PC
+  input  wire [NB_DATA                            - 1 : 0]      i_instruction                       ,  // Current instruction
+  input  wire [NB_DATA                            - 1 : 0]      i_regfile_data                      ,  // Register read data
+  input  wire [NB_DATA                            - 1 : 0]      i_mem_data                          ,  // Memory read data
+  input  wire                                                   i_bkp_hit                           ,  // Breakpoint hit signal
+  input  wire                                                   i_rx_done                           ,  // UART RX byte received
+  input  wire [NB_UART_DATA                       - 1 : 0]      i_rx_data                           ,  // UART RX data byte
+  input  wire                                                   i_tx_fifo_empty                     ,  // UART TX FIFO drained
+  input  wire                                                   i_rst                               ,
+  input  wire                                                   clk 
+)                                                                                                   ;
 
-    localparam [NB_UART_DATA - 1 : 0] CMD_LOAD_FW   = 8'h01;
-    localparam [NB_UART_DATA - 1 : 0] CMD_RUN       = 8'h02;
-    localparam [NB_UART_DATA - 1 : 0] CMD_STEP      = 8'h03;
-    localparam [NB_UART_DATA - 1 : 0] CMD_HALT      = 8'h04;
-    localparam [NB_UART_DATA - 1 : 0] CMD_READ_REG  = 8'h05;
-    localparam [NB_UART_DATA - 1 : 0] CMD_READ_MEM  = 8'h06;
-    localparam [NB_UART_DATA - 1 : 0] CMD_WRITE_REG = 8'h07;
-    localparam [NB_UART_DATA - 1 : 0] CMD_WRITE_MEM = 8'h08;
-    localparam [NB_UART_DATA - 1 : 0] CMD_SET_BKP   = 8'h09;
-    localparam [NB_UART_DATA - 1 : 0] CMD_CLR_BKP   = 8'h0A;
-    localparam [NB_UART_DATA - 1 : 0] CMD_RESET     = 8'h0B;
-    localparam [NB_UART_DATA - 1 : 0] CMD_STATUS    = 8'h0F;
-    localparam [NB_UART_DATA - 1 : 0] CMD_READ_LATCH= 8'h10;
-    localparam [NB_UART_DATA - 1 : 0] STATUS_OK    = 8'h00;
-    localparam [NB_UART_DATA - 1 : 0] STATUS_ERROR = 8'h01;
-    localparam [NB_UART_DATA - 1 : 0] STATUS_BUSY  = 8'h02;
-    localparam [NB_STATE - 1 : 0] S_IDLE          = 17'h00001;
-    localparam [NB_STATE - 1 : 0] S_RECV_CMD      = 17'h00002;
-    localparam [NB_STATE - 1 : 0] S_VALIDATE      = 17'h00004;
-    localparam [NB_STATE - 1 : 0] S_DISPATCH      = 17'h00008;
-    localparam [NB_STATE - 1 : 0] S_LOAD_FW       = 17'h00010;
-    localparam [NB_STATE - 1 : 0] S_EXECUTING     = 17'h00020;
-    localparam [NB_STATE - 1 : 0] S_STEPPING      = 17'h00040;
-    localparam [NB_STATE - 1 : 0] S_READ_REG      = 17'h00080;
-    localparam [NB_STATE - 1 : 0] S_READ_MEM      = 17'h00100;
-    localparam [NB_STATE - 1 : 0] S_SEND_REGS     = 17'h00200;
-    localparam [NB_STATE - 1 : 0] S_SEND_MEM      = 17'h00400;
-    localparam [NB_STATE - 1 : 0] S_WRITE_REG     = 17'h00800;
-    localparam [NB_STATE - 1 : 0] S_WRITE_MEM     = 17'h01000;
-    localparam [NB_STATE - 1 : 0] S_RESPOND       = 17'h02000;
-    localparam [NB_STATE - 1 : 0] S_WAIT_RESP     = 17'h04000;
-    localparam [NB_STATE - 1 : 0] S_SEND_LATCH    = 17'h08000;
-    localparam [NB_STATE - 1 : 0] S_WAIT_TX_DRAIN = 17'h10000;
-    localparam NB_BYTE_CNT   = 3;
-    localparam NB_FRAME_SIZE = 6;
-    reg [NB_STATE - 1 : 0] state_reg, next_state;
-    reg [NB_STATE - 1 : 0] prev_state_reg;
-    reg [NB_UART_DATA - 1 : 0] frame_reg  [0 : 5];
-    reg [NB_UART_DATA - 1 : 0] frame_next [0 : 5];
-    reg [NB_BYTE_CNT - 1 : 0] byte_cnt_reg, byte_cnt_next;
-    reg [NB_UART_DATA - 1 : 0] cmd_opcode_reg, cmd_opcode_next;
-    reg [NB_DATA - 1 : 0]      cmd_payload_reg, cmd_payload_next;
+//---------------------------------------- local params ------------------------------------------//
+  // Command opcodes
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_LOAD_FW   = 8'h01              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_RUN       = 8'h02              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_STEP      = 8'h03              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_HALT      = 8'h04              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_READ_REG  = 8'h05              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_READ_MEM  = 8'h06              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_WRITE_REG = 8'h07              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_WRITE_MEM = 8'h08              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_SET_BKP   = 8'h09              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_CLR_BKP   = 8'h0A              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_RESET     = 8'h0B              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_STATUS    = 8'h0F              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      CMD_READ_LATCH= 8'h10              ;
+  // Response status codes  
+  localparam [NB_UART_DATA                         - 1 : 0]      STATUS_OK     = 8'h00              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      STATUS_ERROR  = 8'h01              ;
+  localparam [NB_UART_DATA                         - 1 : 0]      STATUS_BUSY   = 8'h02              ;
+  // FSM states (one-hot)   
+  localparam [NB_STATE                             - 1 : 0]      S_IDLE          = 17'h00001        ;
+  localparam [NB_STATE                             - 1 : 0]      S_RECV_CMD      = 17'h00002        ;
+  localparam [NB_STATE                             - 1 : 0]      S_VALIDATE      = 17'h00004        ;
+  localparam [NB_STATE                             - 1 : 0]      S_DISPATCH      = 17'h00008        ;
+  localparam [NB_STATE                             - 1 : 0]      S_LOAD_FW       = 17'h00010        ;
+  localparam [NB_STATE                             - 1 : 0]      S_EXECUTING     = 17'h00020        ;
+  localparam [NB_STATE                             - 1 : 0]      S_STEPPING      = 17'h00040        ;
+  localparam [NB_STATE                             - 1 : 0]      S_READ_REG      = 17'h00080        ;
+  localparam [NB_STATE                             - 1 : 0]      S_READ_MEM      = 17'h00100        ;
+  localparam [NB_STATE                             - 1 : 0]      S_SEND_REGS     = 17'h00200        ;
+  localparam [NB_STATE                             - 1 : 0]      S_SEND_MEM      = 17'h00400        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WRITE_REG     = 17'h00800        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WRITE_MEM     = 17'h01000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_RESPOND       = 17'h02000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WAIT_RESP     = 17'h04000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_SEND_LATCH    = 17'h08000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WAIT_TX_DRAIN = 17'h10000        ;
+  // Misc   
+  localparam                                                     NB_BYTE_CNT   = 3                  ;
+  localparam                                                     NB_FRAME_SIZE = 6                  ;
+  localparam                                                     READ_DELAY_MAX= 2'd3               ;  // extra pipeline delay cycles
+  localparam                                                     STATUS_BITS   = 3                  ;  // {bkp_hit, cpu_halted, cpu_running}
 
-    reg cpu_running_reg, cpu_running_next;
-    reg cpu_halted_reg, cpu_halted_next;
-    reg bkp_hit_reg, bkp_hit_next;
-    reg [NB_STEP_CNT - 1 : 0] step_cnt_reg, step_cnt_next;
-    reg [2 : 0] step_cycle_reg, step_cycle_next;
-    reg [NB_DATA - 1 : 0]      resp_data_reg, resp_data_next;
-    reg [NB_UART_DATA - 1 : 0] resp_status_reg, resp_status_next;
-    reg [1 : 0] read_delay_reg, read_delay_next;
-    wire [NB_UART_DATA - 1 : 0] computed_checksum;
-    assign computed_checksum = frame_reg[0] ^ frame_reg[1] ^ frame_reg[2]
-                             ^ frame_reg[3] ^ frame_reg[4];
+//------------------------------------------ Registers -------------------------------------------//
+  reg  [NB_STATE                                   - 1 : 0]      state_reg                          ;
+  reg  [NB_STATE                                   - 1 : 0]      next_state                         ;
+  reg  [NB_STATE                                   - 1 : 0]      prev_state_reg                     ;
 
-    wire entering_load_fw  = (state_reg == S_LOAD_FW)   && (prev_state_reg != S_LOAD_FW);
-    wire entering_send_regs= (state_reg == S_SEND_REGS) && (prev_state_reg != S_SEND_REGS);
-    wire entering_send_mem = (state_reg == S_SEND_MEM)  && (prev_state_reg != S_SEND_MEM);
-    wire entering_write_reg= (state_reg == S_WRITE_REG) && (prev_state_reg != S_WRITE_REG);
-    wire entering_write_mem= (state_reg == S_WRITE_MEM) && (prev_state_reg != S_WRITE_MEM);
-    wire entering_send_latch=(state_reg == S_SEND_LATCH)&& (prev_state_reg != S_SEND_LATCH);
+  reg  [NB_UART_DATA                               - 1 : 0]      frame_reg  [0 : NB_FRAME_SIZE-1]   ;
+  reg  [NB_UART_DATA                               - 1 : 0]      frame_next [0 : NB_FRAME_SIZE-1]   ;
 
-    integer i;
+  reg  [NB_BYTE_CNT                                - 1 : 0]      byte_cnt_reg                       ;
+  reg  [NB_BYTE_CNT                                - 1 : 0]      byte_cnt_next                      ;
 
-    always @(posedge clk) begin
-        if (i_rst) begin
-            state_reg       <= S_IDLE;
-            prev_state_reg  <= S_IDLE;
-            byte_cnt_reg    <= {NB_BYTE_CNT{1'b0}};
-            cmd_opcode_reg  <= {NB_UART_DATA{1'b0}};
-            cmd_payload_reg <= {NB_DATA{1'b0}};
-            cpu_running_reg <= 1'b0;
-            cpu_halted_reg  <= 1'b0;
-            bkp_hit_reg     <= 1'b0;
-            step_cnt_reg    <= {NB_STEP_CNT{1'b0}};
-            step_cycle_reg  <= 3'b000;
-            resp_data_reg   <= {NB_DATA{1'b0}};
-            resp_status_reg <= STATUS_OK;
-            read_delay_reg  <= 2'b00;
-            for (i = 0; i < NB_FRAME_SIZE; i = i + 1) begin
-                frame_reg[i] <= {NB_UART_DATA{1'b0}};
-            end
+  reg  [NB_UART_DATA                               - 1 : 0]      cmd_opcode_reg                     ;
+  reg  [NB_UART_DATA                               - 1 : 0]      cmd_opcode_next                    ;
+  reg  [NB_DATA                                    - 1 : 0]      cmd_payload_reg                    ;
+  reg  [NB_DATA                                    - 1 : 0]      cmd_payload_next                   ;
+
+  reg                                                            cpu_running_reg                    ;
+  reg                                                            cpu_running_next                   ;
+  reg                                                            cpu_halted_reg                     ;
+  reg                                                            cpu_halted_next                    ;
+  reg                                                            bkp_hit_reg                        ;
+  reg                                                            bkp_hit_next                       ;
+
+  reg  [NB_STEP_CNT                                - 1 : 0]      step_cnt_reg                       ;
+  reg  [NB_STEP_CNT                                - 1 : 0]      step_cnt_next                      ;
+  reg  [2                                              : 0]      step_cycle_reg                     ;
+  reg  [2                                              : 0]      step_cycle_next                    ;
+
+  reg  [NB_DATA                                    - 1 : 0]      resp_data_reg                      ;
+  reg  [NB_DATA                                    - 1 : 0]      resp_data_next                     ;
+  reg  [NB_UART_DATA                               - 1 : 0]      resp_status_reg                    ;
+  reg  [NB_UART_DATA                               - 1 : 0]      resp_status_next                   ;
+
+  reg  [1                                              : 0]      read_delay_reg                     ;
+  reg  [1                                              : 0]      read_delay_next                    ;
+
+  integer                                                        i                                  ;
+
+//------------------------------------------ Wires -----------------------------------------------//
+  wire [NB_UART_DATA                               - 1 : 0]      computed_checksum                  ;
+
+  // "entering" strobes: high for exactly 1 cycle when the FSM enters a state
+  wire                                                           entering_load_fw                   ;
+  wire                                                           entering_send_regs                 ;
+  wire                                                           entering_send_mem                  ;
+  wire                                                           entering_write_reg                 ;
+  wire                                                           entering_write_mem                 ;
+  wire                                                           entering_send_latch                ;
+
+  assign computed_checksum   = frame_reg[0] ^ frame_reg[1] ^ frame_reg[2]
+                             ^ frame_reg[3] ^ frame_reg[4]                                          ;
+
+  assign entering_load_fw    = (state_reg == S_LOAD_FW)    && (prev_state_reg != S_LOAD_FW)         ;
+  assign entering_send_regs  = (state_reg == S_SEND_REGS)  && (prev_state_reg != S_SEND_REGS)       ;
+  assign entering_send_mem   = (state_reg == S_SEND_MEM)   && (prev_state_reg != S_SEND_MEM)        ;
+  assign entering_write_reg  = (state_reg == S_WRITE_REG)  && (prev_state_reg != S_WRITE_REG)       ;
+  assign entering_write_mem  = (state_reg == S_WRITE_MEM)  && (prev_state_reg != S_WRITE_MEM)       ;
+  assign entering_send_latch = (state_reg == S_SEND_LATCH) && (prev_state_reg != S_SEND_LATCH)      ;
+
+//--------------------------------------- Sequential logic ---------------------------------------//
+  always @(posedge clk)
+  begin
+    if (i_rst)
+    begin
+      state_reg       <= S_IDLE                                                                     ;
+      prev_state_reg  <= S_IDLE                                                                     ;
+      byte_cnt_reg    <= {NB_BYTE_CNT{1'b0}}                                                        ;
+      cmd_opcode_reg  <= {NB_UART_DATA{1'b0}}                                                       ;
+      cmd_payload_reg <= {NB_DATA{1'b0}}                                                            ;
+      cpu_running_reg <= 1'b0                                                                       ;
+      cpu_halted_reg  <= 1'b0                                                                       ;
+      bkp_hit_reg     <= 1'b0                                                                       ;
+      step_cnt_reg    <= {NB_STEP_CNT{1'b0}}                                                        ;
+      step_cycle_reg  <= 3'b000                                                                     ;
+      resp_data_reg   <= {NB_DATA{1'b0}}                                                            ;
+      resp_status_reg <= STATUS_OK                                                                  ;
+      read_delay_reg  <= 2'b00                                                                      ;
+      for (i = 0; i < NB_FRAME_SIZE; i = i + 1)
+      begin
+        frame_reg[i]  <= {NB_UART_DATA{1'b0}}                                                       ;
+      end
+    end
+    else
+    begin
+      state_reg       <= next_state                                                                 ;
+      prev_state_reg  <= state_reg                                                                  ;
+      byte_cnt_reg    <= byte_cnt_next                                                              ;
+      cmd_opcode_reg  <= cmd_opcode_next                                                            ;
+      cmd_payload_reg <= cmd_payload_next                                                           ;
+      cpu_running_reg <= cpu_running_next                                                           ;
+      cpu_halted_reg  <= cpu_halted_next                                                            ;
+      bkp_hit_reg     <= bkp_hit_next                                                               ;
+      step_cnt_reg    <= step_cnt_next                                                              ;
+      step_cycle_reg  <= step_cycle_next                                                            ;
+      resp_data_reg   <= resp_data_next                                                             ;
+      resp_status_reg <= resp_status_next                                                           ;
+      read_delay_reg  <= read_delay_next                                                            ;
+      for (i = 0; i < NB_FRAME_SIZE; i = i + 1)
+      begin
+        frame_reg[i]  <= frame_next[i]                                                              ;
+      end
+    end
+  end
+
+//-------------------------------------- Next-state logic ---------------------------------------//
+  always @(*)
+  begin
+    next_state = state_reg                                                                          ;
+
+    case (state_reg)
+      S_IDLE                                                                                        :
+      begin
+        if (i_rx_done)
+        begin
+          next_state = S_RECV_CMD                                                                   ;
         end
-        else begin
-            state_reg       <= next_state;
-            prev_state_reg  <= state_reg;
-            byte_cnt_reg    <= byte_cnt_next;
-            cmd_opcode_reg  <= cmd_opcode_next;
-            cmd_payload_reg <= cmd_payload_next;
-            cpu_running_reg <= cpu_running_next;
-            cpu_halted_reg  <= cpu_halted_next;
-            bkp_hit_reg     <= bkp_hit_next;
-            step_cnt_reg    <= step_cnt_next;
-            step_cycle_reg  <= step_cycle_next;
-            resp_data_reg   <= resp_data_next;
-            resp_status_reg <= resp_status_next;
-            read_delay_reg  <= read_delay_next;
-            for (i = 0; i < NB_FRAME_SIZE; i = i + 1) begin
-                frame_reg[i] <= frame_next[i];
-            end
+      end
+
+      S_RECV_CMD                                                                                    :
+      begin
+        if (i_rx_done && byte_cnt_reg == NB_FRAME_SIZE - 1)
+        begin
+          next_state = S_VALIDATE                                                                   ;
         end
+      end
+
+      S_VALIDATE                                                                                    :
+      begin
+        next_state = S_DISPATCH                                                                     ;
+      end
+
+      S_DISPATCH                                                                                    :
+      begin
+        if (computed_checksum != frame_reg[NB_FRAME_SIZE - 1])
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+        else
+        begin
+          case (cmd_opcode_reg)
+            CMD_LOAD_FW    : next_state = S_LOAD_FW                                                 ;
+            CMD_RUN        : next_state = S_RESPOND                                                 ;
+            CMD_STEP       : next_state = S_STEPPING                                                ;
+            CMD_HALT       : next_state = S_RESPOND                                                 ;
+            CMD_READ_REG   :
+            begin
+              if (cmd_payload_reg[7 : 0] == {NB_UART_DATA{1'b1}})
+              begin
+                next_state = S_SEND_REGS                                                            ;
+              end
+              else
+              begin
+                next_state = S_READ_REG                                                             ;
+              end
+            end
+            CMD_READ_MEM                                                                            :
+            begin
+              if (cmd_payload_reg == {NB_DATA{1'b1}})
+              begin
+                next_state = S_SEND_MEM                                                             ;
+              end
+              else
+              begin
+                next_state = S_READ_MEM                                                             ;
+              end
+            end
+            CMD_WRITE_REG  : next_state = S_WRITE_REG                                               ;
+            CMD_WRITE_MEM  : next_state = S_WRITE_MEM                                               ;
+            CMD_SET_BKP    : next_state = S_RESPOND                                                 ;
+            CMD_CLR_BKP    : next_state = S_RESPOND                                                 ;
+            CMD_RESET      : next_state = S_RESPOND                                                 ;
+            CMD_STATUS     : next_state = S_RESPOND                                                 ;
+            CMD_READ_LATCH : next_state = S_SEND_LATCH                                              ;
+            default        : next_state = S_RESPOND                                                 ;
+          endcase
+        end
+      end
+
+      S_LOAD_FW                                                                                     :
+      begin
+        if (i_imem_loader_done)
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_EXECUTING                                                                                   :
+      begin
+        if (i_instruction == HALT_INST || i_bkp_hit)
+        begin
+          next_state = S_IDLE                                                                       ;
+        end
+        else if (i_rx_done)
+        begin
+          next_state = S_RECV_CMD                                                                   ;
+        end
+      end
+
+      S_STEPPING                                                                                    :
+      begin
+        if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1})
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_READ_REG                                                                                    :
+      begin
+        if (read_delay_reg == READ_DELAY_MAX)
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_READ_MEM                                                                                    :
+      begin
+        if (read_delay_reg == READ_DELAY_MAX)
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_SEND_REGS                                                                                   :
+      begin
+        if (i_regfile_tx_done)
+        begin
+          next_state = S_WAIT_TX_DRAIN                                                              ;    
+        end
+      end
+
+      S_SEND_MEM                                                                                    :
+      begin
+        if (i_dmem_tx_done)
+        begin
+          next_state = S_WAIT_TX_DRAIN                                                              ;
+        end
+      end
+
+      S_SEND_LATCH                                                                                  :
+      begin
+        if (i_latch_tx_done)
+        begin
+          next_state = S_WAIT_TX_DRAIN                                                              ;
+        end
+      end
+
+      S_WAIT_TX_DRAIN                                                                               :
+      begin
+        if (i_tx_fifo_empty)
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_WRITE_REG                                                                                   :
+      begin
+        if (i_regfile_rx_done)
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_WRITE_MEM                                                                                   :
+      begin
+        if (i_dmem_rx_done)
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+      end
+
+      S_RESPOND                                                                                     :
+      begin
+        next_state = S_WAIT_RESP                                                                    ;
+      end
+
+      S_WAIT_RESP                                                                                   :
+      begin
+        if (cpu_running_reg)
+        begin
+          next_state = S_EXECUTING                                                                  ;  
+        end   
+        else
+        begin
+          next_state = S_IDLE                                                                       ;
+        end
+      end
+
+      default                                                                                       : 
+        next_state = S_IDLE                                                                         ;
+    endcase
+  end
+
+//------------------------------------ Output / datapath logic ----------------------------------//
+  always @(*)
+  begin
+    // Default outputs
+    o_cpu_enable        = cpu_running_reg                                                           ;
+    o_cpu_reset         = 1'b0                                                                      ;
+    o_imem_loader_start = entering_load_fw                                                          ;
+    o_regfile_tx_start  = entering_send_regs                                                        ;
+    o_dmem_tx_start     = entering_send_mem                                                         ;
+    o_latch_tx_start    = entering_send_latch                                                       ;
+    o_regfile_rd        = 1'b0                                                                      ;
+    o_regfile_raddr     = 5'b0                                                                      ;
+    o_regfile_rx_start  = entering_write_reg                                                        ;
+    o_regfile_rx_addr   = 5'b0                                                                      ;
+    o_dmem_rx_start     = entering_write_mem                                                        ;
+    o_dmem_rx_addr      = {NB_DATA{1'b0}}                                                           ;
+    o_mem_rd            = 1'b0                                                                      ;
+    o_mem_raddr         = {NB_ADDR{1'b0}}                                                           ;
+    o_bkp_set           = 1'b0                                                                      ;
+    o_bkp_clr           = 1'b0                                                                      ;
+    o_bkp_addr          = {NB_DATA{1'b0}}                                                           ;
+    o_resp_valid        = 1'b0                                                                      ;
+    o_resp_status       = STATUS_OK                                                                 ;
+    o_resp_data         = {NB_DATA{1'b0}}                                                           ;
+
+    // Default register next values
+    byte_cnt_next    = byte_cnt_reg                                                                 ;
+    cmd_opcode_next  = cmd_opcode_reg                                                               ;
+    cmd_payload_next = cmd_payload_reg                                                              ;
+    cpu_running_next = cpu_running_reg                                                              ;
+    cpu_halted_next  = cpu_halted_reg                                                               ;
+    bkp_hit_next     = bkp_hit_reg                                                                  ;
+    step_cnt_next    = step_cnt_reg                                                                 ;
+    step_cycle_next  = step_cycle_reg                                                               ;
+    resp_data_next   = resp_data_reg                                                                ;
+    resp_status_next = resp_status_reg                                                              ;
+    read_delay_next  = read_delay_reg                                                               ;
+
+    for (i = 0; i < NB_FRAME_SIZE; i = i + 1)
+    begin
+      frame_next[i] = frame_reg[i]                                                                  ;
     end
 
-    // Next-State Logic
-    always @(*) begin
-        next_state = state_reg;
-
-        case (state_reg)
-            S_IDLE: begin
-                if (i_rx_done) begin
-                    next_state = S_RECV_CMD;
-                end
-            end
-
-            S_RECV_CMD: begin
-                if (i_rx_done && byte_cnt_reg == 3'd5) begin
-                    next_state = S_VALIDATE;
-                end
-            end
-
-            S_VALIDATE: begin
-                next_state = S_DISPATCH;
-            end
-
-            S_DISPATCH: begin
-                if (computed_checksum != frame_reg[5]) begin
-                    // Checksum error — respond with error
-                    next_state = S_RESPOND;
-                end
-                else begin
-                    case (cmd_opcode_reg)
-                        CMD_LOAD_FW:   next_state = S_LOAD_FW;
-                        CMD_RUN:       next_state = S_RESPOND;
-                        CMD_STEP:      next_state = S_STEPPING;
-                        CMD_HALT:      next_state = S_RESPOND;
-                        CMD_READ_REG: begin
-                            if (cmd_payload_reg[7 : 0] == 8'hFF) begin
-                                next_state = S_SEND_REGS;
-                            end
-                            else begin
-                                next_state = S_READ_REG;
-                            end
-                        end
-                        CMD_READ_MEM: begin
-                            if (cmd_payload_reg == 32'hFFFFFFFF) begin
-                                next_state = S_SEND_MEM;
-                            end
-                            else begin
-                                next_state = S_READ_MEM;
-                            end
-                        end
-                        CMD_WRITE_REG: next_state = S_WRITE_REG;
-                        CMD_WRITE_MEM: next_state = S_WRITE_MEM;
-                        CMD_SET_BKP:   next_state = S_RESPOND;
-                        CMD_CLR_BKP:   next_state = S_RESPOND;
-                        CMD_RESET:     next_state = S_RESPOND;
-                        CMD_STATUS:    next_state = S_RESPOND;
-                        CMD_READ_LATCH:next_state = S_SEND_LATCH;
-                        default:       next_state = S_RESPOND;
-                    endcase
-                end
-            end
-
-            S_LOAD_FW: begin
-                if (i_imem_loader_done) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_EXECUTING: begin
-                if (i_instruction == HALT_INST || i_bkp_hit) begin
-                    next_state = S_IDLE;
-                end
-                else if (i_rx_done) begin
-                    next_state = S_RECV_CMD;
-                end
-            end
-
-            S_STEPPING: begin
-                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1}) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_READ_REG: begin
-                if (read_delay_reg == 2'd2) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_READ_MEM: begin
-                if (read_delay_reg == 2'd2) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_SEND_REGS: begin
-                if (i_regfile_tx_done) begin
-                    next_state = S_WAIT_TX_DRAIN;
-                end
-            end
-
-            S_SEND_MEM: begin
-                if (i_dmem_tx_done) begin
-                    next_state = S_WAIT_TX_DRAIN;
-                end
-            end
-
-            S_SEND_LATCH: begin
-                if (i_latch_tx_done) begin
-                    next_state = S_WAIT_TX_DRAIN;
-                end
-            end
-
-            S_WAIT_TX_DRAIN: begin
-                // Wait for the TX FIFO to fully drain so the response bytes
-                // do not collide via OR-gating with the tail of the dump.
-                if (i_tx_fifo_empty) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_WRITE_REG: begin
-                if (i_regfile_rx_done) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_WRITE_MEM: begin
-                if (i_dmem_rx_done) begin
-                    next_state = S_RESPOND;
-                end
-            end
-
-            S_RESPOND: begin
-                next_state = S_WAIT_RESP;
-            end
-
-            S_WAIT_RESP: begin
-                if (cpu_running_reg) begin
-                    next_state = S_EXECUTING;
-                end
-                else begin
-                    next_state = S_IDLE;
-                end
-            end
-
-            default: next_state = S_IDLE;
-        endcase
-    end
-
-    // Output & Data Path Logic
-    always @(*) begin
-        // Default outputs
-        o_cpu_enable        = cpu_running_reg;
-        o_cpu_reset         = 1'b0;
-        o_imem_loader_start = entering_load_fw;
-        o_regfile_tx_start  = entering_send_regs;
-        o_dmem_tx_start     = entering_send_mem;
-        o_latch_tx_start    = entering_send_latch;
-        o_regfile_rd        = 1'b0;
-        o_regfile_raddr     = 5'b0;
-        o_regfile_rx_start  = entering_write_reg;
-        o_regfile_rx_addr   = 5'b0;
-        o_dmem_rx_start     = entering_write_mem;
-        o_dmem_rx_addr      = {NB_DATA{1'b0}};
-        o_mem_rd            = 1'b0;
-        o_mem_raddr         = {NB_ADDR{1'b0}};
-        o_bkp_set           = 1'b0;
-        o_bkp_clr           = 1'b0;
-        o_bkp_addr          = {NB_DATA{1'b0}};
-        o_resp_valid        = 1'b0;
-        o_resp_status       = STATUS_OK;
-        o_resp_data         = {NB_DATA{1'b0}};
-
-        // Default register next values
-        byte_cnt_next    = byte_cnt_reg;
-        cmd_opcode_next  = cmd_opcode_reg;
-        cmd_payload_next = cmd_payload_reg;
-        cpu_running_next = cpu_running_reg;
-        cpu_halted_next  = cpu_halted_reg;
-        bkp_hit_next     = bkp_hit_reg;
-        step_cnt_next    = step_cnt_reg;
-        step_cycle_next  = step_cycle_reg;
-        resp_data_next   = resp_data_reg;
-        resp_status_next = resp_status_reg;
-        read_delay_next  = read_delay_reg;
-
-        for (i = 0; i < NB_FRAME_SIZE; i = i + 1) begin
-            frame_next[i] = frame_reg[i];
+    case (state_reg)
+      S_IDLE                                                                                        :
+      begin
+        byte_cnt_next   = {NB_BYTE_CNT{1'b0}}                                                       ;
+        read_delay_next = 2'b00                                                                     ;
+        if (i_rx_done)
+        begin
+          frame_next[0] = i_rx_data                                                                 ;
+          byte_cnt_next = 3'd1                                                                      ;
         end
+      end
 
-        case (state_reg)
-            S_IDLE: begin
-                byte_cnt_next   = {NB_BYTE_CNT{1'b0}};
-                read_delay_next = 2'b00;
-                if (i_rx_done) begin
-                    frame_next[0] = i_rx_data;
-                    byte_cnt_next = 3'd1;
-                end
+      S_RECV_CMD                                                                                :
+      begin
+        if (i_rx_done)
+        begin
+          frame_next[byte_cnt_reg] = i_rx_data                                                  ;
+          byte_cnt_next            = byte_cnt_reg + 1'b1                                        ;
+        end
+      end
+
+      S_VALIDATE                                                                                :
+      begin
+        cmd_opcode_next  = frame_reg[0]                                                         ;
+        cmd_payload_next = {frame_reg[4], frame_reg[3], frame_reg[2], frame_reg[1]}             ;
+      end
+
+      S_DISPATCH                                                                                :
+      begin
+        if (computed_checksum != frame_reg[NB_FRAME_SIZE - 1])
+        begin
+          resp_status_next = STATUS_ERROR                                                       ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+        else
+        begin
+          case (cmd_opcode_reg)
+            CMD_LOAD_FW                                                                         :
+            begin
+              o_cpu_reset      = 1'b1                                                           ;
+              cpu_running_next = 1'b0                                                           ;
+              cpu_halted_next  = 1'b0                                                           ;
             end
 
-            S_RECV_CMD: begin
-                if (i_rx_done) begin
-                    frame_next[byte_cnt_reg] = i_rx_data;
-                    byte_cnt_next = byte_cnt_reg + 1'b1;
-                end
+            CMD_RUN                                                                             :
+            begin
+              cpu_running_next = 1'b1                                                           ;
+              cpu_halted_next  = 1'b0                                                           ;
+              bkp_hit_next     = 1'b0                                                           ;
+              resp_status_next = STATUS_OK                                                      ;
+              resp_data_next   = {NB_DATA{1'b0}}                                                ;
             end
 
-            S_VALIDATE: begin
-                // Parse fields from frame buffer
-                cmd_opcode_next  = frame_reg[0];
-                cmd_payload_next = {frame_reg[4], frame_reg[3], frame_reg[2], frame_reg[1]};
+            CMD_STEP                                                                            :
+            begin
+              step_cnt_next   = (cmd_payload_reg == {NB_DATA{1'b0}}) ? 32'd1 : cmd_payload_reg  ;
+              step_cycle_next = 3'd0                                                            ;
             end
 
-            S_DISPATCH: begin
-                if (computed_checksum != frame_reg[5]) begin
-                    // Checksum mismatch
-                    resp_status_next = STATUS_ERROR;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
-                else begin
-                    case (cmd_opcode_reg)
-                        CMD_LOAD_FW: begin
-                            o_cpu_reset      = 1'b1;
-                            cpu_running_next = 1'b0;
-                            cpu_halted_next  = 1'b0;
-                        end
-
-                        CMD_RUN: begin
-                            cpu_running_next = 1'b1;
-                            cpu_halted_next  = 1'b0;
-                            bkp_hit_next     = 1'b0;
-                            resp_status_next = STATUS_OK;
-                            resp_data_next   = {NB_DATA{1'b0}};
-                        end
-
-                        CMD_STEP: begin
-                            step_cnt_next   = (cmd_payload_reg == {NB_DATA{1'b0}}) ? 32'd1 : cmd_payload_reg;
-                            step_cycle_next = 3'd0;  // FIX: era 2'd0, step_cycle_reg es [2:0]
-                        end
-
-                        CMD_HALT: begin
-                            cpu_running_next = 1'b0;
-                            cpu_halted_next  = 1'b1;
-                            resp_status_next = STATUS_OK;
-                            resp_data_next   = i_pc;
-                        end
-
-                        CMD_READ_REG: begin
-                            // Payload[4:0] = register address, 0xFF = full dump
-                        end
-
-                        CMD_READ_MEM: begin
-                            // Payload = address, 0xFFFFFFFF = full dump
-                        end
-
-                        CMD_WRITE_REG: begin
-                            o_regfile_rx_addr = cmd_payload_reg[4 : 0];
-                        end
-
-                        CMD_WRITE_MEM: begin
-                            o_dmem_rx_addr = cmd_payload_reg;
-                        end
-
-                        CMD_SET_BKP: begin
-                            o_bkp_set        = 1'b1;
-                            o_bkp_addr       = cmd_payload_reg;
-                            resp_status_next = STATUS_OK;
-                            resp_data_next   = {NB_DATA{1'b0}};
-                        end
-
-                        CMD_CLR_BKP: begin
-                            o_bkp_clr        = 1'b1;
-                            o_bkp_addr       = cmd_payload_reg;
-                            resp_status_next = STATUS_OK;
-                            resp_data_next   = {NB_DATA{1'b0}};
-                        end
-
-                        CMD_RESET: begin
-                            o_cpu_reset      = 1'b1;
-                            cpu_running_next = 1'b0;
-                            cpu_halted_next  = 1'b0;
-                            bkp_hit_next     = 1'b0;
-                            resp_status_next = STATUS_OK;
-                            resp_data_next   = {NB_DATA{1'b0}};
-                        end
-
-                        CMD_STATUS: begin
-                            resp_status_next = STATUS_OK;
-                            resp_data_next   = {29'b0, bkp_hit_reg, cpu_halted_reg, cpu_running_reg};
-                        end
-
-                        CMD_READ_LATCH: begin
-                            // Stream serialized via du_latch_tx; final response built in S_SEND_LATCH
-                        end
-
-                        default: begin
-                            resp_status_next = STATUS_ERROR;
-                            resp_data_next   = {NB_DATA{1'b0}};
-                        end
-                    endcase
-                end
+            CMD_HALT                                                                            :
+            begin
+              cpu_running_next = 1'b0                                                           ;
+              cpu_halted_next  = 1'b1                                                           ;
+              resp_status_next = STATUS_OK                                                      ;
+              resp_data_next   = i_pc                                                           ;
             end
 
-            S_LOAD_FW: begin
-                o_cpu_enable = 1'b0;
-                if (i_imem_loader_done) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
+            CMD_READ_REG                                                                        :
+            begin
+              // Payload[4:0] = register address, 0xFF = full dump — handled in next-state
             end
 
-            S_EXECUTING: begin
-                o_cpu_enable = 1'b1;
-                if (i_instruction == HALT_INST) begin
-                    cpu_running_next = 1'b0;
-                    cpu_halted_next  = 1'b1;
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = i_pc;
-                end
-                else if (i_bkp_hit) begin
-                    cpu_running_next = 1'b0;
-                    cpu_halted_next  = 1'b1;
-                    bkp_hit_next     = 1'b1;
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = i_pc;
-                end
-                // Parse host commands while the CPU keeps running. Commands that need
-                // exclusive access stop the pipeline in their own states.
-                if (i_rx_done) begin
-                    frame_next[0]    = i_rx_data;
-                    byte_cnt_next    = 3'd1;
-                end
+            CMD_READ_MEM                                                                        :
+            begin
+              // Payload = address, 0xFFFFFFFF = full dump — handled in next-state
             end
 
-            S_STEPPING: begin
-                // 1 ciclo de enable por step = 1 etapa de pipeline.
-                // Para completar una instrucción completa se necesitan 5 steps (IF→ID→EX→MEM→WB).
-                o_cpu_enable    = 1'b1;
-                step_cnt_next   = step_cnt_reg - 1'b1;
-
-                if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1}) begin
-                    cpu_running_next = 1'b0;
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = i_pc;
-                end
+            CMD_WRITE_REG                                                                       :
+            begin
+              o_regfile_rx_addr = cmd_payload_reg[4 : 0]                                        ;
             end
 
-            S_READ_REG: begin
-                o_cpu_enable    = 1'b0;
-                o_regfile_rd    = 1'b1;
-                o_regfile_raddr = cmd_payload_reg[4 : 0];
-                read_delay_next = read_delay_reg + 1'b1;
-
-                // Extra cycle accounts for the pipeline register inserted in
-                // cpu_subsystem between du_regfile_rd and i_du_rgfile_rd.
-                if (read_delay_reg == 2'd3) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = i_regfile_data;
-                end
+            CMD_WRITE_MEM                                                                       :
+            begin
+              o_dmem_rx_addr = cmd_payload_reg                                                  ;
             end
 
-            S_READ_MEM: begin
-                o_cpu_enable = 1'b0;
-                o_mem_rd     = 1'b1;
-                o_mem_raddr  = cmd_payload_reg[NB_ADDR - 1 : 0];
-                read_delay_next = read_delay_reg + 1'b1;
-
-                // Same adjustment as S_READ_REG.
-                if (read_delay_reg == 2'd3) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = i_mem_data;
-                end
+            CMD_SET_BKP                                                                         :
+            begin
+              o_bkp_set        = 1'b1                                                           ;
+              o_bkp_addr       = cmd_payload_reg                                                ;
+              resp_status_next = STATUS_OK                                                      ;
+              resp_data_next   = {NB_DATA{1'b0}}                                                ;
             end
 
-            S_SEND_REGS: begin
-                o_cpu_enable = 1'b0;
-                if (i_regfile_tx_done) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
-            end
-            
-            S_SEND_MEM: begin
-                o_cpu_enable = 1'b0;
-                if (i_dmem_tx_done) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
+            CMD_CLR_BKP                                                                         :
+            begin
+              o_bkp_clr        = 1'b1                                                           ;
+              o_bkp_addr       = cmd_payload_reg                                                ;
+              resp_status_next = STATUS_OK                                                      ;
+              resp_data_next   = {NB_DATA{1'b0}}                                                ;
             end
 
-            S_SEND_LATCH: begin
-                o_cpu_enable = 1'b0;
-                if (i_latch_tx_done) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
+            CMD_RESET                                                                           :
+            begin
+              o_cpu_reset      = 1'b1                                                           ;
+              cpu_running_next = 1'b0                                                           ;
+              cpu_halted_next  = 1'b0                                                           ;
+              bkp_hit_next     = 1'b0                                                           ;
+              resp_status_next = STATUS_OK                                                      ;
+              resp_data_next   = {NB_DATA{1'b0}}                                                ;
             end
 
-            S_WAIT_TX_DRAIN: begin
-                o_cpu_enable = 1'b0;
+            CMD_STATUS                                                                          :
+            begin
+              resp_status_next = STATUS_OK                                                      ;
+              resp_data_next   = {{(NB_DATA - STATUS_BITS){1'b0}},
+                                   bkp_hit_reg, cpu_halted_reg, cpu_running_reg}                ;
             end
 
-            S_WRITE_REG: begin
-                o_cpu_enable      = 1'b0;
-                o_regfile_rx_addr = cmd_payload_reg[4 : 0];
-                if (i_regfile_rx_done) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
+            CMD_READ_LATCH                                                                      :
+            begin
+              // Serialized via du_latch_tx; response built in S_SEND_LATCH
             end
 
-            S_WRITE_MEM: begin
-                o_cpu_enable  = 1'b0;
-                o_dmem_rx_addr = cmd_payload_reg;
-                if (i_dmem_rx_done) begin
-                    resp_status_next = STATUS_OK;
-                    resp_data_next   = {NB_DATA{1'b0}};
-                end
+            default                                                                             :
+            begin
+              resp_status_next = STATUS_ERROR                                                   ;
+              resp_data_next   = {NB_DATA{1'b0}}                                                ;
             end
+          endcase
+        end
+      end
 
-            S_RESPOND: begin
-                o_resp_valid  = 1'b1;
-                o_resp_status = resp_status_reg;
-                o_resp_data   = resp_data_reg;
-            end
+      S_LOAD_FW                                                                                 :
+      begin
+        o_cpu_enable = 1'b0                                                                     ;
+        if (i_imem_loader_done)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+      end
 
-            S_WAIT_RESP: begin
-                // After a response, continue execution only if the running flag survived
-                // the command that was just processed.
-                if (cpu_running_reg) begin
-                    o_cpu_enable = 1'b1;
-                end
-            end
+      S_EXECUTING                                                                               :
+      begin
+        o_cpu_enable = 1'b1                                                                     ;
+        if (i_instruction == HALT_INST)
+        begin
+          cpu_running_next = 1'b0                                                               ;
+          cpu_halted_next  = 1'b1                                                               ;
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = i_pc                                                               ;
+        end
+        else if (i_bkp_hit)
+        begin
+          cpu_running_next = 1'b0                                                               ;
+          cpu_halted_next  = 1'b1                                                               ;
+          bkp_hit_next     = 1'b1                                                               ;
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = i_pc                                                               ;
+        end
+        if (i_rx_done)
+        begin
+          frame_next[0] = i_rx_data                                                             ;
+          byte_cnt_next = 3'd1                                                                  ;
+        end
+      end
 
-            default: begin
-                // noop
-            end
-        endcase
-    end
+      S_STEPPING                                                                                :
+      begin
+        o_cpu_enable  = 1'b1                                                                    ;
+        step_cnt_next = step_cnt_reg - 1'b1                                                     ;
+        if (step_cnt_reg == {{(NB_STEP_CNT-1){1'b0}}, 1'b1})
+        begin
+          cpu_running_next = 1'b0                                                               ;
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = i_pc                                                               ;
+        end
+      end
+
+      S_READ_REG                                                                                : 
+      begin
+        o_cpu_enable    = 1'b0                                                                  ;
+        o_regfile_rd    = 1'b1                                                                  ;
+        o_regfile_raddr = cmd_payload_reg[4 : 0]                                                ;
+        read_delay_next = read_delay_reg + 1'b1                                                 ;
+        if (read_delay_reg == READ_DELAY_MAX)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = i_regfile_data                                                     ;
+        end
+      end
+
+      S_READ_MEM                                                                                :
+      begin
+        o_cpu_enable    = 1'b0                                                                  ;
+        o_mem_rd        = 1'b1                                                                  ;
+        o_mem_raddr     = cmd_payload_reg[NB_ADDR - 1 : 0]                                      ;
+        read_delay_next = read_delay_reg + 1'b1                                                 ;
+        if (read_delay_reg == READ_DELAY_MAX)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = i_mem_data                                                         ;
+        end
+      end
+
+      S_SEND_REGS                                                                               :
+      begin
+        o_cpu_enable = 1'b0                                                                     ;
+        if (i_regfile_tx_done)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+      end
+
+      S_SEND_MEM                                                                                :
+      begin
+        o_cpu_enable = 1'b0                                                                     ;
+        if (i_dmem_tx_done)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+      end
+
+      S_SEND_LATCH                                                                              :
+      begin
+        o_cpu_enable = 1'b0                                                                     ;
+        if (i_latch_tx_done)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+      end
+
+      S_WAIT_TX_DRAIN                                                                           :
+      begin
+        o_cpu_enable = 1'b0                                                                     ;
+      end
+
+      S_WRITE_REG                                                                               :
+      begin
+        o_cpu_enable      = 1'b0                                                                ;
+        o_regfile_rx_addr = cmd_payload_reg[4 : 0]                                              ;
+        if (i_regfile_rx_done)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+      end
+
+      S_WRITE_MEM                                                                               : 
+      begin
+        o_cpu_enable   = 1'b0                                                                   ;
+        o_dmem_rx_addr = cmd_payload_reg                                                        ;
+        if (i_dmem_rx_done)
+        begin
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+      end
+
+      S_RESPOND                                                                                 :
+      begin
+        o_resp_valid  = 1'b1                                                                    ;
+        o_resp_status = resp_status_reg                                                         ;
+        o_resp_data   = resp_data_reg                                                           ;
+      end
+
+      S_WAIT_RESP                                                                               :
+      begin
+        if (cpu_running_reg)
+        begin
+          o_cpu_enable = 1'b1                                                                   ;
+        end
+      end
+
+      default                                                                                   :
+      begin
+        // noop
+      end
+    endcase
+  end
 
 endmodule

@@ -64,6 +64,7 @@ module cpu_core
   input wire                                                     i_dmem_ren                          , // Read enable
   // Control
   input wire                                                     i_en                                , // CPU pipeline enable (from DU via cpu_subsystem)
+  input wire                                                     i_fetch_stall                       , // Stall fetch during pipeline drain (from DU)
   input wire                                                     i_du_rst                            , // Debug Unit reset
   input wire                                                     i_rst                               , // Global synchronous reset
   input wire                                                     clk                                   // Clock
@@ -161,7 +162,7 @@ module cpu_core
 
   // IF/ID flush: branch taken OR jump (JAL/JALR)
   wire                            flush_ifid                                                         ;
-  assign flush_ifid = (branch_taken | jump_flush) & i_en                                            ;
+  assign flush_ifid = (branch_taken | jump_flush | i_fetch_stall) & i_en                             ;
 
 //--------------------------------------- Internal Signals - ID/EX Register ----------------------//
   wire                            idex_reg_write                                                     ;
@@ -233,11 +234,11 @@ module cpu_core
   wire [NB_DATA        - 1 : 0]  regfile_wr_data                                                    ;
 
 //--------------------------------------- Pipeline Enable Signals ---------------------------------//
-  wire  pc_wen    = i_en & ~stall                                                                    ; // Stall freezes PC
-  wire  ifid_en   = i_en & ~stall                                                                    ; // Stall freezes IF/ID
-  wire  idex_en   = ifid_en                                                                          ; // ID/EX avanza solo cuando IF/ID avanzó
-  wire  exmem_en  = idex_en                                                                          ; // EX/MEM avanza solo cuando ID/EX avanzó
-  wire  memwb_en  = exmem_en                                                                         ; // MEM/WB avanza solo cuando EX/MEM avanzó
+  wire  pc_wen    = i_en & ~stall & ~i_fetch_stall                                                   ; // Stall or drain freezes PC
+  wire  ifid_en   = i_en & ~stall & ~i_fetch_stall                                                   ; // Stall or drain freezes IF/ID
+  wire  idex_en   = i_en & ~stall                                                                    ; // Keeps running during drain
+  wire  exmem_en  = i_en & ~stall                                                                    ; // Keeps running during drain
+  wire  memwb_en  = i_en & ~stall                                                                    ; // Keeps running during drain
   wire  reset_all = i_rst | i_du_rst                                                                 ;
 
 //---------------------------------------- IF Stage - PC & IMEM ----------------------------------//

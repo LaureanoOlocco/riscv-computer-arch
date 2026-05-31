@@ -50,6 +50,8 @@ module debug_unit_top
   output wire                                                   o_uart_rd                           ,  // UART FIFO RX read enable
   output wire                                                   o_uart_wr                           ,  // UART FIFO TX write enable
   output wire [NB_UART_DATA                            - 1 : 0] o_uart_wdata                        ,  // UART FIFO TX write data
+  // Pipeline drain control
+  output wire                                                   o_fetch_stall                       ,  // Stall CPU fetch during pipeline drain
 //------------------------------------------- INPUTS ---------------------------------------------//
   // CPU state
   input  wire [NB_PC                                   - 1 : 0] i_pc                                ,  // Current PC
@@ -85,7 +87,7 @@ module debug_unit_top
 )                                                                                                   ;
 
 //---------------------------------------- local params ------------------------------------------//
-  localparam                                                    NB_DU_STATE   = 17                  ;
+  localparam                                                    NB_DU_STATE   = 18                  ;
   localparam                                                    NB_STEP_CNT   = 32                  ;
 
 //-------------------------------------- Internal wires ------------------------------------------//
@@ -110,6 +112,7 @@ module debug_unit_top
   wire [NB_DATA                                   - 1 : 0]      master_resp_data                    ;
   wire                                                          master_cpu_enable                   ;
   wire                                                          master_cpu_reset                    ;
+  wire                                                          master_fetch_stall                  ;
   // du_imem_loader outputs
   wire                                                          imem_loader_done                    ;
   wire                                                          imem_loader_mem_wr                  ;
@@ -200,6 +203,7 @@ module debug_unit_top
     .o_resp_valid         (master_resp_valid                                                     ),
     .o_resp_status        (master_resp_status                                                    ),
     .o_resp_data          (master_resp_data                                                      ),
+    .o_fetch_stall        (master_fetch_stall                                                    ),
     .i_imem_loader_done   (imem_loader_done                                                      ),
     .i_regfile_tx_done    (regfile_tx_done                                                       ),
     .i_dmem_tx_done       (dmem_tx_done                                                          ),
@@ -397,6 +401,8 @@ module debug_unit_top
   assign o_dmem_wdata    = dmem_rx_wdata                                                         ;
   // Breakpoint hit
   assign o_bkp_hit       = bkp_hit                                                               ;
+  // Pipeline drain fetch stall
+  assign o_fetch_stall   = master_fetch_stall                                                    ;
   // UART TX multiplexing (OR-gating — only one submodule active at a time)
   assign o_tx_start      = regfile_tx_tx_start | dmem_tx_tx_start | latch_tx_tx_start | resp_tx_start ;
   assign o_uart_rd       = rx_done_pulse_r                                                       ;  // pop RX FIFO each consumed byte

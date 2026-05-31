@@ -16,7 +16,7 @@ module du_master
   parameter                                                     NB_UART_DATA  = 8                   ,  // NB of UART data
   parameter                                                     NB_DATA       = 32                  ,  // NB of data width
   parameter                                                     NB_ADDR       = 8                   ,  // NB of memory address width
-  parameter                                                     NB_STATE      = 17                  ,  // NB of FSM states (one-hot)
+  parameter                                                     NB_STATE      = 18                  ,  // NB of FSM states (one-hot)
   parameter                                                     NB_STEP_CNT   = 32                  ,  // NB of step counter
   parameter [NB_DATA                              - 1 : 0]      HALT_INST     = 32'h1A1A1A1A         // Halt instruction
 )
@@ -42,6 +42,7 @@ module du_master
   output reg                                                    o_resp_valid                        ,  // Response valid pulse
   output reg  [NB_UART_DATA                       - 1 : 0]      o_resp_status                       ,  // Response status byte
   output reg  [NB_DATA                            - 1 : 0]      o_resp_data                         ,  // Response data
+  output reg                                                    o_fetch_stall                       ,  // Stall CPU fetch during pipeline drain
 //------------------------------------------- INPUTS --------------------------------------------   -//
   input  wire                                                   i_imem_loader_done                  ,  // du_imem_loader done
   input  wire                                                   i_regfile_tx_done                   ,  // du_regfile_tx done
@@ -80,29 +81,30 @@ module du_master
   localparam [NB_UART_DATA                         - 1 : 0]      STATUS_OK     = 8'h00              ;
   localparam [NB_UART_DATA                         - 1 : 0]      STATUS_ERROR  = 8'h01              ;
   localparam [NB_UART_DATA                         - 1 : 0]      STATUS_BUSY   = 8'h02              ;
-  // FSM states (one-hot)   
-  localparam [NB_STATE                             - 1 : 0]      S_IDLE          = 17'h00001        ;
-  localparam [NB_STATE                             - 1 : 0]      S_RECV_CMD      = 17'h00002        ;
-  localparam [NB_STATE                             - 1 : 0]      S_VALIDATE      = 17'h00004        ;
-  localparam [NB_STATE                             - 1 : 0]      S_DISPATCH      = 17'h00008        ;
-  localparam [NB_STATE                             - 1 : 0]      S_LOAD_FW       = 17'h00010        ;
-  localparam [NB_STATE                             - 1 : 0]      S_EXECUTING     = 17'h00020        ;
-  localparam [NB_STATE                             - 1 : 0]      S_STEPPING      = 17'h00040        ;
-  localparam [NB_STATE                             - 1 : 0]      S_READ_REG      = 17'h00080        ;
-  localparam [NB_STATE                             - 1 : 0]      S_READ_MEM      = 17'h00100        ;
-  localparam [NB_STATE                             - 1 : 0]      S_SEND_REGS     = 17'h00200        ;
-  localparam [NB_STATE                             - 1 : 0]      S_SEND_MEM      = 17'h00400        ;
-  localparam [NB_STATE                             - 1 : 0]      S_WRITE_REG     = 17'h00800        ;
-  localparam [NB_STATE                             - 1 : 0]      S_WRITE_MEM     = 17'h01000        ;
-  localparam [NB_STATE                             - 1 : 0]      S_RESPOND       = 17'h02000        ;
-  localparam [NB_STATE                             - 1 : 0]      S_WAIT_RESP     = 17'h04000        ;
-  localparam [NB_STATE                             - 1 : 0]      S_SEND_LATCH    = 17'h08000        ;
-  localparam [NB_STATE                             - 1 : 0]      S_WAIT_TX_DRAIN = 17'h10000        ;
+  // FSM states (one-hot)
+  localparam [NB_STATE                             - 1 : 0]      S_IDLE          = 18'h00001        ;
+  localparam [NB_STATE                             - 1 : 0]      S_RECV_CMD      = 18'h00002        ;
+  localparam [NB_STATE                             - 1 : 0]      S_VALIDATE      = 18'h00004        ;
+  localparam [NB_STATE                             - 1 : 0]      S_DISPATCH      = 18'h00008        ;
+  localparam [NB_STATE                             - 1 : 0]      S_LOAD_FW       = 18'h00010        ;
+  localparam [NB_STATE                             - 1 : 0]      S_EXECUTING     = 18'h00020        ;
+  localparam [NB_STATE                             - 1 : 0]      S_STEPPING      = 18'h00040        ;
+  localparam [NB_STATE                             - 1 : 0]      S_READ_REG      = 18'h00080        ;
+  localparam [NB_STATE                             - 1 : 0]      S_READ_MEM      = 18'h00100        ;
+  localparam [NB_STATE                             - 1 : 0]      S_SEND_REGS     = 18'h00200        ;
+  localparam [NB_STATE                             - 1 : 0]      S_SEND_MEM      = 18'h00400        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WRITE_REG     = 18'h00800        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WRITE_MEM     = 18'h01000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_RESPOND       = 18'h02000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WAIT_RESP     = 18'h04000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_SEND_LATCH    = 18'h08000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_WAIT_TX_DRAIN = 18'h10000        ;
+  localparam [NB_STATE                             - 1 : 0]      S_DRAINING      = 18'h20000        ;
   // Misc   
   localparam                                                     NB_BYTE_CNT   = 3                  ;
   localparam                                                     NB_FRAME_SIZE = 6                  ;
   localparam                                                     READ_DELAY_MAX= 2'd3               ;  // extra pipeline delay cycles
-  localparam                                                     STATUS_BITS   = 3                  ;  // {bkp_hit, cpu_halted, cpu_running}
+  localparam                                                     STATUS_BITS   = 4                  ;  // {prog_ended, bkp_hit, cpu_halted, cpu_running}
 
 //------------------------------------------ Registers -------------------------------------------//
   reg  [NB_STATE                                   - 1 : 0]      state_reg                          ;
@@ -139,6 +141,13 @@ module du_master
 
   reg  [1                                              : 0]      read_delay_reg                     ;
   reg  [1                                              : 0]      read_delay_next                    ;
+
+  reg  [2                                              : 0]      drain_cnt_reg                      ;
+  reg  [2                                              : 0]      drain_cnt_next                     ;
+  reg                                                            prog_ended_reg                     ;
+  reg                                                            prog_ended_next                    ;
+  reg                                                            drain_halt_reg                     ;
+  reg                                                            drain_halt_next                    ;
 
   integer                                                        i                                  ;
 
@@ -181,6 +190,9 @@ module du_master
       resp_data_reg   <= {NB_DATA{1'b0}}                                                            ;
       resp_status_reg <= STATUS_OK                                                                  ;
       read_delay_reg  <= 2'b00                                                                      ;
+      drain_cnt_reg   <= 3'd0                                                                       ;
+      prog_ended_reg  <= 1'b0                                                                       ;
+      drain_halt_reg  <= 1'b0                                                                       ;
       for (i = 0; i < NB_FRAME_SIZE; i = i + 1)
       begin
         frame_reg[i]  <= {NB_UART_DATA{1'b0}}                                                       ;
@@ -201,6 +213,9 @@ module du_master
       resp_data_reg   <= resp_data_next                                                             ;
       resp_status_reg <= resp_status_next                                                           ;
       read_delay_reg  <= read_delay_next                                                            ;
+      drain_cnt_reg   <= drain_cnt_next                                                             ;
+      prog_ended_reg  <= prog_ended_next                                                            ;
+      drain_halt_reg  <= drain_halt_next                                                            ;
       for (i = 0; i < NB_FRAME_SIZE; i = i + 1)
       begin
         frame_reg[i]  <= frame_next[i]                                                              ;
@@ -238,6 +253,12 @@ module du_master
       S_DISPATCH                                                                                    :
       begin
         if (computed_checksum != frame_reg[NB_FRAME_SIZE - 1])
+        begin
+          next_state = S_RESPOND                                                                    ;
+        end
+        else if (prog_ended_reg &&
+                 cmd_opcode_reg != CMD_RESET &&
+                 cmd_opcode_reg != CMD_STATUS)
         begin
           next_state = S_RESPOND                                                                    ;
         end
@@ -294,11 +315,19 @@ module du_master
       begin
         if (i_instruction == HALT_INST || i_bkp_hit)
         begin
-          next_state = S_IDLE                                                                       ;
+          next_state = S_DRAINING                                                                   ;
         end
         else if (i_rx_done)
         begin
           next_state = S_RECV_CMD                                                                   ;
+        end
+      end
+
+      S_DRAINING                                                                                    :
+      begin
+        if (drain_cnt_reg == 3'd3)
+        begin
+          next_state = S_IDLE                                                                       ;
         end
       end
 
@@ -420,6 +449,7 @@ module du_master
     o_resp_valid        = 1'b0                                                                      ;
     o_resp_status       = STATUS_OK                                                                 ;
     o_resp_data         = {NB_DATA{1'b0}}                                                           ;
+    o_fetch_stall       = 1'b0                                                                      ;
 
     // Default register next values
     byte_cnt_next    = byte_cnt_reg                                                                 ;
@@ -433,6 +463,9 @@ module du_master
     resp_data_next   = resp_data_reg                                                                ;
     resp_status_next = resp_status_reg                                                              ;
     read_delay_next  = read_delay_reg                                                               ;
+    drain_cnt_next   = drain_cnt_reg                                                                ;
+    prog_ended_next  = prog_ended_reg                                                               ;
+    drain_halt_next  = drain_halt_reg                                                               ;
 
     for (i = 0; i < NB_FRAME_SIZE; i = i + 1)
     begin
@@ -469,6 +502,13 @@ module du_master
       S_DISPATCH                                                                                :
       begin
         if (computed_checksum != frame_reg[NB_FRAME_SIZE - 1])
+        begin
+          resp_status_next = STATUS_ERROR                                                       ;
+          resp_data_next   = {NB_DATA{1'b0}}                                                    ;
+        end
+        else if (prog_ended_reg &&
+                 cmd_opcode_reg != CMD_RESET &&
+                 cmd_opcode_reg != CMD_STATUS)
         begin
           resp_status_next = STATUS_ERROR                                                       ;
           resp_data_next   = {NB_DATA{1'b0}}                                                    ;
@@ -548,6 +588,7 @@ module du_master
               cpu_running_next = 1'b0                                                           ;
               cpu_halted_next  = 1'b0                                                           ;
               bkp_hit_next     = 1'b0                                                           ;
+              prog_ended_next  = 1'b0                                                           ;
               resp_status_next = STATUS_OK                                                      ;
               resp_data_next   = {NB_DATA{1'b0}}                                                ;
             end
@@ -556,7 +597,7 @@ module du_master
             begin
               resp_status_next = STATUS_OK                                                      ;
               resp_data_next   = {{(NB_DATA - STATUS_BITS){1'b0}},
-                                   bkp_hit_reg, cpu_halted_reg, cpu_running_reg}                ;
+                                   prog_ended_reg, bkp_hit_reg, cpu_halted_reg, cpu_running_reg};
             end
 
             CMD_READ_LATCH                                                                      :
@@ -588,23 +629,39 @@ module du_master
         o_cpu_enable = 1'b1                                                                     ;
         if (i_instruction == HALT_INST)
         begin
-          cpu_running_next = 1'b0                                                               ;
-          cpu_halted_next  = 1'b1                                                               ;
-          resp_status_next = STATUS_OK                                                          ;
-          resp_data_next   = i_pc                                                               ;
+          drain_halt_next = 1'b1                                                                ;
+          drain_cnt_next  = 3'd0                                                                ;
         end
         else if (i_bkp_hit)
         begin
-          cpu_running_next = 1'b0                                                               ;
-          cpu_halted_next  = 1'b1                                                               ;
-          bkp_hit_next     = 1'b1                                                               ;
-          resp_status_next = STATUS_OK                                                          ;
-          resp_data_next   = i_pc                                                               ;
+          drain_halt_next = 1'b0                                                                ;
+          drain_cnt_next  = 3'd0                                                                ;
         end
         if (i_rx_done)
         begin
           frame_next[0] = i_rx_data                                                             ;
           byte_cnt_next = 3'd1                                                                  ;
+        end
+      end
+
+      S_DRAINING                                                                                :
+      begin
+        o_cpu_enable   = 1'b1                                                                   ;
+        o_fetch_stall  = 1'b1                                                                   ;
+        drain_cnt_next = drain_cnt_reg + 3'd1                                                   ;
+
+        if (drain_cnt_reg == 3'd3)
+        begin
+          o_cpu_enable     = 1'b0                                                               ;
+          cpu_running_next = 1'b0                                                               ;
+          cpu_halted_next  = 1'b1                                                               ;
+          resp_status_next = STATUS_OK                                                          ;
+          resp_data_next   = i_pc                                                               ;
+
+          if (drain_halt_reg)
+            prog_ended_next = 1'b1                                                              ;
+          else
+            bkp_hit_next = 1'b1                                                                 ;
         end
       end
 

@@ -78,6 +78,9 @@ module cpu_subsystem
     // Breakpoint hit (CPU → DU)
     wire                            du_bkp_hit            ;
 
+    // Pipeline drain fetch stall (DU → CPU)
+    wire                            du_fetch_stall        ;
+
     // CPU state observations (CPU → DU, buffered)
     wire [NB_PC       - 1 : 0]     cpu_pc_raw            ;
     wire [NB_DATA     - 1 : 0]     cpu_instr_raw         ;
@@ -263,6 +266,7 @@ module cpu_subsystem
 
         // Control
         .i_en           (cpu_en),
+        .i_fetch_stall  (du_fetch_stall),
         .i_du_rst       (cpu_rst),
         .i_rst          (i_rst),
         .clk            (clk)
@@ -308,6 +312,9 @@ module cpu_subsystem
 
         // Breakpoint hit
         .o_bkp_hit       (du_bkp_hit),
+
+        // Pipeline drain fetch stall
+        .o_fetch_stall   (du_fetch_stall),
 
         // UART TX
         .o_tx_start      (o_tx_start),

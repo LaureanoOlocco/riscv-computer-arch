@@ -221,6 +221,103 @@ class DebugClient:
 
         return pc, regs
 
+    def read_latches(self):
+        self.ser.write(self._build_frame(CMD_READ_LATCH, 0))
+        self.ser.flush()
+
+        raw = self.ser.read(45)
+
+        if len(raw) < 45:
+            raise TimeoutError(f"Dump de pipeline incompleto: {len(raw)}/45 bytes")
+
+        status, _ = self._recv_response()
+
+        self._check(status, "READ_LATCH")
+
+        def u32(offset):
+            return struct.unpack("<I", raw[offset:offset+4])[0]
+
+        ifid_pc = u32(0)
+        ifid_instr = u32(4)
+
+        idex_ctrl = raw[8] | ((raw[9] & 0x01) << 8)
+        idex_rs1_data = u32(10)
+        idex_rs2_data = u32(14)
+        idex_imm = u32(18)
+        idex_rd = raw[22] & 0x1F
+        idex_rs1 = raw[23] & 0x1F
+        idex_rs2 = raw[24] & 0x1F
+
+        exmem_ctrl = raw[25] & 0x0F
+        exmem_alu = u32(26)
+        exmem_data2 = u32(30)
+        exmem_rd = raw[34] & 0x1F
+
+        memwb_ctrl = raw[35] & 0x03
+        memwb_data = u32(36)
+        memwb_alu = u32(40)
+        memwb_rd = raw[44] & 0x1F
+
+        idex = {
+            "reg_write": idex_ctrl & 0x01,
+            "mem_read": (idex_ctrl >> 1) & 0x01,
+            "mem_write": (idex_ctrl >> 2) & 0x01,
+            "alu_src": (idex_ctrl >> 3) & 0x01,
+            "mem_to_reg": (idex_ctrl >> 4) & 0x01,
+            "alu_op": (idex_ctrl >> 5) & 0x03,
+            "data_size": (idex_ctrl >> 7) & 0x03,
+        }
+        exmem = {
+            "reg_write": exmem_ctrl & 0x01,
+            "mem_read": (exmem_ctrl >> 1) & 0x01,
+            "mem_write": (exmem_ctrl >> 2) & 0x01,
+            "mem_to_reg": (exmem_ctrl >> 3) & 0x01,
+        }
+        memwb = {
+            "reg_write": memwb_ctrl & 0x01,
+            "mem_to_reg": (memwb_ctrl >> 1) & 0x01,
+        }
+
+        print()
+        print("  Pipeline latches")
+        print(f"  IF/ID   {'EMPTY' if ifid_instr == 0 else 'VALID'}  pc=0x{ifid_pc:08X} instr=0x{ifid_instr:08X}")
+        print(
+            f"  ID/EX   {'EMPTY' if idex_ctrl == 0 else 'VALID'}  "
+            f"ctrl=0x{idex_ctrl:03X} rw={idex['reg_write']} mr={idex['mem_read']} "
+            f"mw={idex['mem_write']} as={idex['alu_src']} m2r={idex['mem_to_reg']} "
+            f"aluop={idex['alu_op']} size={idex['data_size']}"
+        )
+        print(
+            f"          rd=x{idex_rd:<2d}({_abi_name(idex_rd):<4}) "
+            f"rs1=x{idex_rs1:<2d}({_abi_name(idex_rs1):<4})=0x{idex_rs1_data:08X} "
+            f"rs2=x{idex_rs2:<2d}({_abi_name(idex_rs2):<4})=0x{idex_rs2_data:08X} "
+            f"imm=0x{idex_imm:08X}"
+        )
+        print(
+            f"  EX/MEM  {'EMPTY' if exmem_ctrl == 0 else 'VALID'}  "
+            f"ctrl=0x{exmem_ctrl:01X} rw={exmem['reg_write']} mr={exmem['mem_read']} "
+            f"mw={exmem['mem_write']} m2r={exmem['mem_to_reg']} "
+            f"alu=0x{exmem_alu:08X} data2=0x{exmem_data2:08X} "
+            f"rd=x{exmem_rd:<2d}({_abi_name(exmem_rd):<4})"
+        )
+        print(
+            f"  MEM/WB  {'EMPTY' if memwb_ctrl == 0 else 'VALID'}  "
+            f"ctrl=0x{memwb_ctrl:01X} rw={memwb['reg_write']} m2r={memwb['mem_to_reg']} "
+            f"data=0x{memwb_data:08X} alu=0x{memwb_alu:08X} "
+            f"rd=x{memwb_rd:<2d}({_abi_name(memwb_rd):<4})"
+        )
+
+        return {
+            "ifid": {"pc": ifid_pc, "instr": ifid_instr},
+            "idex": {"ctrl": idex_ctrl, "rs1_data": idex_rs1_data,
+                     "rs2_data": idex_rs2_data, "imm": idex_imm,
+                     "rd": idex_rd, "rs1": idex_rs1, "rs2": idex_rs2},
+            "exmem": {"ctrl": exmem_ctrl, "alu": exmem_alu,
+                      "data2": exmem_data2, "rd": exmem_rd},
+            "memwb": {"ctrl": memwb_ctrl, "data": memwb_data,
+                      "alu": memwb_alu, "rd": memwb_rd},
+        }
+
     def write_reg(self, addr, value):
         raise RuntimeError("WRITE_REG no está conectado en cpu_subsystem/cpu_core")
 
@@ -307,6 +404,7 @@ Comandos disponibles:
   sync                        Limpia buffers y verifica CMD_STATUS
 
   rr <reg>                    Lee registro 0-31, o 255 / 0xFF para dump
+  pl / latch                  Lee latches internos del pipeline
   wr <reg> <valor>            No soportado: RTL no conecta escritura DU
 
   rm <addr>                   Lee memoria
@@ -374,6 +472,9 @@ def shell(client):
                     continue
 
                 client.read_reg(parse_int(parts[1]))
+
+            elif cmd in ("pl", "latch"):
+                client.read_latches()
 
             elif cmd == "wr":
                 if len(parts) < 3:
